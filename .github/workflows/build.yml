@@ -3,6 +3,7 @@ name: Build Windows Electron App
 on:
   push:
     branches: ["main"]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -15,16 +16,19 @@ jobs:
       - name: 🟢 Instalar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
+          cache: npm
 
       - name: 📦 Instalar dependências
-        run: npm install
+        run: npm ci
 
       - name: ⚛️ Build React (Vite)
         run: npm run build
 
       - name: 🖥️ Build Electron Windows
         run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: 📤 Upload do executável
         uses: actions/upload-artifact@v4

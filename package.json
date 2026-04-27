@@ -1,24 +1,31 @@
 {
   "name": "bizcontrol",
   "version": "1.0.0",
+  "description": "Sistema de gestão BizControl",
+  "author": "Cleiton Ernesto Cumbane",
   "private": true,
   "main": "electron/main.js",
+
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "electron": "electron .",
     "start": "concurrently \"npm run dev\" \"wait-on http://localhost:5174 && npm run electron\"",
+
     "dist": "npm run build && electron-builder",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+
     "postinstall": "electron-builder install-app-deps"
   },
+
   "dependencies": {
     "better-sqlite3": "^11.10.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.8.0"
   },
+
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",
     "concurrently": "^9.1.0",
@@ -28,21 +35,29 @@
     "vite": "^4.4.5",
     "wait-on": "^7.2.0"
   },
+
   "build": {
     "appId": "com.bizcontrol.app",
     "productName": "BizControl",
+
     "directories": {
       "output": "release"
     },
+
     "files": [
       "dist/**/*",
       "electron/**/*",
       "package.json"
     ],
+
     "asar": true,
+
+    "publish": "never",
+
     "linux": {
       "target": "AppImage"
     },
+
     "win": {
       "target": "nsis",
       "icon": "public/bizcontrol.png",
