@@ -71,58 +71,53 @@ const verifyPassword = (plainPassword, storedHash) => {
 
 ipcMain.handle("get-produtos", () => {
   console.log("📋 [MAIN] Buscando produtos");
-  return new Promise((resolve, reject) => {
-    db.all("SELECT * FROM produtos", [], (err, rows) => {
-      if (err) {
-        console.error("❌ [MAIN] Erro ao buscar produtos:", err);
-        reject(err);
-      } else {
-        console.log("✅ [MAIN] Produtos encontrados:", rows.length);
-        resolve(rows);
-      }
-    });
-  });
+  try {
+    const rows = db.prepare("SELECT * FROM produtos").all();
+    console.log("✅ [MAIN] Produtos encontrados:", rows.length);
+    return rows;
+  } catch (err) {
+    console.error("❌ [MAIN] Erro ao buscar produtos:", err);
+    throw err;
+  }
 });
 
 ipcMain.handle("add-produto", (_, produto) => {
   console.log("➕ [MAIN] Adicionando produto:", produto);
-  return new Promise((resolve, reject) => {
-    db.run(
-      "INSERT INTO produtos (nome, categoria, preco, stock) VALUES (?, ?, ?, ?)",
-      [produto.nome, produto.categoria, produto.preco, produto.stock],
-      function (err) {
-        if (err) {
-          console.error("❌ [MAIN] Erro ao inserir produto:", err);
-          reject(err);
-        } else {
-          console.log("✅ [MAIN] Produto adicionado com ID:", this.lastID);
-          resolve({ id: this.lastID });
-        }
-      }
-    );
-  });
+  try {
+    const result = db
+      .prepare("INSERT INTO produtos (nome, categoria, preco, stock) VALUES (?, ?, ?, ?)")
+      .run(produto.nome, produto.categoria, produto.preco, produto.stock);
+
+    console.log("✅ [MAIN] Produto adicionado com ID:", result.lastInsertRowid);
+    return { id: result.lastInsertRowid };
+  } catch (err) {
+    console.error("❌ [MAIN] Erro ao inserir produto:", err);
+    throw err;
+  }
 });
 
 ipcMain.handle("update-produto", (_, produto) => {
-  return new Promise((resolve, reject) => {
-    db.run(
-      "UPDATE produtos SET nome=?, categoria=?, preco=?, stock=? WHERE id=?",
-      [produto.nome, produto.categoria, produto.preco, produto.stock, produto.id],
-      (err) => {
-        if (err) reject(err);
-        else resolve(true);
-      }
+  try {
+    db.prepare("UPDATE produtos SET nome=?, categoria=?, preco=?, stock=? WHERE id=?").run(
+      produto.nome,
+      produto.categoria,
+      produto.preco,
+      produto.stock,
+      produto.id
     );
-  });
+    return true;
+  } catch (err) {
+    throw err;
+  }
 });
 
 ipcMain.handle("delete-produto", (_, id) => {
-  return new Promise((resolve, reject) => {
-    db.run("DELETE FROM produtos WHERE id=?", [id], (err) => {
-      if (err) reject(err);
-      else resolve(true);
-    });
-  });
+  try {
+    db.prepare("DELETE FROM produtos WHERE id=?").run(id);
+    return true;
+  } catch (err) {
+    throw err;
+  }
 });
 
 /* =========================
@@ -130,62 +125,51 @@ ipcMain.handle("delete-produto", (_, id) => {
 ========================= */
 
 ipcMain.handle("get-movimentos", () => {
-  return new Promise((resolve, reject) => {
-    db.all(`
+  try {
+    return db
+      .prepare(
+        `
       SELECT m.*, p.nome as produto_nome 
       FROM movimentos m 
       LEFT JOIN produtos p ON m.produto_id = p.id 
       ORDER BY m.data DESC
-    `, [], (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows || []);
-    });
-  });
+    `
+      )
+      .all();
+  } catch (err) {
+    throw err;
+  }
 });
 
 ipcMain.handle("add-movimento", (_, movimento) => {
   const produtoId = Number(movimento.produto_id);
   const quantidade = Number(movimento.quantidade);
-  const tipo = movimento.tipo === 'saida' ? 'saida' : 'entrada';
+  const tipo = movimento.tipo === "saida" ? "saida" : "entrada";
 
-  return new Promise((resolve, reject) => {
-    if (!Number.isInteger(produtoId) || produtoId <= 0) {
-      reject(new Error('Produto inválido.')); 
-      return;
-    }
-    if (!Number.isInteger(quantidade) || quantidade <= 0) {
-      reject(new Error('Quantidade inválida.')); 
-      return;
-    }
+  if (!Number.isInteger(produtoId) || produtoId <= 0) {
+    throw new Error("Produto inválido.");
+  }
+  if (!Number.isInteger(quantidade) || quantidade <= 0) {
+    throw new Error("Quantidade inválida.");
+  }
 
-    db.run(
-      "INSERT INTO movimentos (produto_id, tipo, quantidade, observacao) VALUES (?, ?, ?, ?)",
-      [produtoId, tipo, quantidade, movimento.observacao || ""],
-      function (err) {
-        if (err) {
-          reject(err);
-          return;
-        }
+  const insertMovimentoStmt = db.prepare(
+    "INSERT INTO movimentos (produto_id, tipo, quantidade, observacao) VALUES (?, ?, ?, ?)"
+  );
+  const updateStockStmt = db.prepare(
+    tipo === "entrada"
+      ? "UPDATE produtos SET stock = stock + ? WHERE id = ?"
+      : "UPDATE produtos SET stock = stock - ? WHERE id = ?"
+  );
 
-        const insertedMovimentoId = this.lastID;
-        const updateQuery = tipo === 'entrada'
-          ? "UPDATE produtos SET stock = stock + ? WHERE id = ?"
-          : "UPDATE produtos SET stock = stock - ? WHERE id = ?";
-
-        db.run(
-          updateQuery,
-          [quantidade, produtoId],
-          function (err) {
-            if (err) {
-              reject(err);
-            } else {
-              resolve({ id: insertedMovimentoId });
-            }
-          }
-        );
-      }
-    );
+  const tx = db.transaction(() => {
+    const inserted = insertMovimentoStmt.run(produtoId, tipo, quantidade, movimento.observacao || "");
+    updateStockStmt.run(quantidade, produtoId);
+    return inserted.lastInsertRowid;
   });
+
+  const insertedMovimentoId = tx();
+  return { id: insertedMovimentoId };
 });
 
 /* =========================
@@ -193,47 +177,46 @@ ipcMain.handle("add-movimento", (_, movimento) => {
 ========================= */
 
 ipcMain.handle("get-utilizadores", () => {
-  return new Promise((resolve, reject) => {
-    db.all("SELECT * FROM utilizadores ORDER BY data_criacao DESC", [], (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows || []);
-    });
-  });
+  try {
+    return db.prepare("SELECT * FROM utilizadores ORDER BY data_criacao DESC").all();
+  } catch (err) {
+    throw err;
+  }
 });
 
 ipcMain.handle("add-utilizador", (_, utilizador) => {
-  return new Promise((resolve, reject) => {
-    db.run(
-      "INSERT INTO utilizadores (nome, email, telefone, funcao) VALUES (?, ?, ?, ?)",
-      [utilizador.nome, utilizador.email, utilizador.telefone, utilizador.funcao],
-      function (err) {
-        if (err) reject(err);
-        else resolve({ id: this.lastID });
-      }
-    );
-  });
+  try {
+    const result = db
+      .prepare("INSERT INTO utilizadores (nome, email, telefone, funcao) VALUES (?, ?, ?, ?)")
+      .run(utilizador.nome, utilizador.email, utilizador.telefone, utilizador.funcao);
+    return { id: result.lastInsertRowid };
+  } catch (err) {
+    throw err;
+  }
 });
 
 ipcMain.handle("update-utilizador", (_, utilizador) => {
-  return new Promise((resolve, reject) => {
-    db.run(
-      "UPDATE utilizadores SET nome=?, email=?, telefone=?, funcao=? WHERE id=?",
-      [utilizador.nome, utilizador.email, utilizador.telefone, utilizador.funcao, utilizador.id],
-      (err) => {
-        if (err) reject(err);
-        else resolve(true);
-      }
+  try {
+    db.prepare("UPDATE utilizadores SET nome=?, email=?, telefone=?, funcao=? WHERE id=?").run(
+      utilizador.nome,
+      utilizador.email,
+      utilizador.telefone,
+      utilizador.funcao,
+      utilizador.id
     );
-  });
+    return true;
+  } catch (err) {
+    throw err;
+  }
 });
 
 ipcMain.handle("delete-utilizador", (_, id) => {
-  return new Promise((resolve, reject) => {
-    db.run("DELETE FROM utilizadores WHERE id=?", [id], (err) => {
-      if (err) reject(err);
-      else resolve(true);
-    });
-  });
+  try {
+    db.prepare("DELETE FROM utilizadores WHERE id=?").run(id);
+    return true;
+  } catch (err) {
+    throw err;
+  }
 });
 
 /* =========================
@@ -244,59 +227,45 @@ ipcMain.handle("auth-login", (_, credentials) => {
   const email = String(credentials?.email || "").trim().toLowerCase();
   const password = String(credentials?.password || "");
 
-  return new Promise((resolve, reject) => {
-    if (!email || !password) {
-      reject(new Error("Informe email e senha para iniciar sessão."));
-      return;
-    }
+  if (!email || !password) {
+    throw new Error("Informe email e senha para iniciar sessão.");
+  }
 
-    db.get(
-      "SELECT id, nome, email, perfil, ativo, senha_hash FROM auth_users WHERE email = ? LIMIT 1",
-      [email],
-      (err, row) => {
-        if (err) {
-          reject(new Error("Erro interno ao validar credenciais."));
-          return;
-        }
+  let row;
+  try {
+    row = db
+      .prepare("SELECT id, nome, email, perfil, ativo, senha_hash FROM auth_users WHERE email = ? LIMIT 1")
+      .get(email);
+  } catch (err) {
+    throw new Error("Erro interno ao validar credenciais.");
+  }
 
-        if (!row || row.ativo !== 1) {
-          reject(new Error("Credenciais inválidas."));
-          return;
-        }
+  if (!row || row.ativo !== 1) {
+    throw new Error("Credenciais inválidas.");
+  }
 
-        const passwordOk = verifyPassword(password, row.senha_hash);
-        if (!passwordOk) {
-          reject(new Error("Credenciais inválidas."));
-          return;
-        }
+  const passwordOk = verifyPassword(password, row.senha_hash);
+  if (!passwordOk) {
+    throw new Error("Credenciais inválidas.");
+  }
 
-        db.run(
-          "UPDATE auth_users SET ultimo_login = CURRENT_TIMESTAMP WHERE id = ?",
-          [row.id],
-          () => {
-            resolve({
-              id: row.id,
-              nome: row.nome,
-              email: row.email,
-              perfil: row.perfil,
-            });
-          }
-        );
-      }
-    );
-  });
+  db.prepare("UPDATE auth_users SET ultimo_login = CURRENT_TIMESTAMP WHERE id = ?").run(row.id);
+
+  return {
+    id: row.id,
+    nome: row.nome,
+    email: row.email,
+    perfil: row.perfil,
+  };
 });
 
 ipcMain.handle("auth-can-register", () => {
-  return new Promise((resolve, reject) => {
-    db.get("SELECT COUNT(*) AS total FROM auth_users WHERE ativo = 1", [], (err, row) => {
-      if (err) {
-        reject(new Error("Não foi possível validar contas existentes."));
-      } else {
-        resolve((row?.total || 0) === 0);
-      }
-    });
-  });
+  try {
+    const row = db.prepare("SELECT COUNT(*) AS total FROM auth_users WHERE ativo = 1").get();
+    return (row?.total || 0) === 0;
+  } catch (err) {
+    throw new Error("Não foi possível validar contas existentes.");
+  }
 });
 
 ipcMain.handle("auth-register", (_, payload) => {
@@ -305,52 +274,43 @@ ipcMain.handle("auth-register", (_, payload) => {
   const password = String(payload?.password || "");
   const masterPassword = String(payload?.masterPassword || "");
 
-  return new Promise((resolve, reject) => {
-    if (!nome || !email || !password) {
-      reject(new Error("Preencha nome, email e senha para criar a conta."));
-      return;
+  if (!nome || !email || !password) {
+    throw new Error("Preencha nome, email e senha para criar a conta.");
+  }
+
+  if (masterPassword !== MASTER_REGISTRATION_PASSWORD) {
+    throw new Error("Senha mestre inválida.");
+  }
+
+  let row;
+  try {
+    row = db.prepare("SELECT COUNT(*) AS total FROM auth_users WHERE ativo = 1").get();
+  } catch (err) {
+    throw new Error("Erro ao validar disponibilidade para registo.");
+  }
+
+  if ((row?.total || 0) > 0) {
+    throw new Error("Já existe uma conta ativa no sistema.");
+  }
+
+  const passwordHash = hashPassword(password);
+  try {
+    const result = db
+      .prepare("INSERT INTO auth_users (nome, email, senha_hash, perfil, ativo) VALUES (?, ?, ?, ?, 1)")
+      .run(nome, email, passwordHash, "owner");
+
+    return {
+      id: result.lastInsertRowid,
+      nome,
+      email,
+      perfil: "owner",
+    };
+  } catch (err) {
+    if (err?.message?.includes("UNIQUE")) {
+      throw new Error("Este email já está registado.");
     }
-
-    if (masterPassword !== MASTER_REGISTRATION_PASSWORD) {
-      reject(new Error("Senha mestre inválida."));
-      return;
-    }
-
-    db.get("SELECT COUNT(*) AS total FROM auth_users WHERE ativo = 1", [], (countErr, row) => {
-      if (countErr) {
-        reject(new Error("Erro ao validar disponibilidade para registo."));
-        return;
-      }
-
-      if ((row?.total || 0) > 0) {
-        reject(new Error("Já existe uma conta ativa no sistema."));
-        return;
-      }
-
-      const passwordHash = hashPassword(password);
-      db.run(
-        "INSERT INTO auth_users (nome, email, senha_hash, perfil, ativo) VALUES (?, ?, ?, ?, 1)",
-        [nome, email, passwordHash, "owner"],
-        function (insertErr) {
-          if (insertErr) {
-            if (insertErr?.message?.includes("UNIQUE")) {
-              reject(new Error("Este email já está registado."));
-            } else {
-              reject(new Error("Não foi possível criar a conta."));
-            }
-            return;
-          }
-
-          resolve({
-            id: this.lastID,
-            nome,
-            email,
-            perfil: "owner",
-          });
-        }
-      );
-    });
-  });
+    throw new Error("Não foi possível criar a conta.");
+  }
 });
 
 ipcMain.handle("ping", () => "ok");
