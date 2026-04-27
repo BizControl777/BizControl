@@ -1,0 +1,578 @@
+/* =======================
+   RESET
+======================= */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: sans-serif;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100%;
+  background: #0a0f18;
+  color: #e2e8f0;
+  overflow-x: hidden;
+}
+
+/* =======================
+   APP LAYOUT (FIX PRINCIPAL)
+======================= */
+.app {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* =======================
+   SIDEBAR FIXA
+======================= */
+.sidebar {
+  width: 260px;
+  background: #111827;
+  border-right: 1px solid #1f2937;
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* LOGO */
+.logo-container {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.logo {
+  width: 100px;
+  margin-bottom: 10px;
+}
+
+.sidebar h2 {
+  color: #ffb400;
+  font-size: 20px;
+  letter-spacing: 2px;
+}
+
+/* MENU */
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+}
+
+.menu a {
+  text-decoration: none;
+  color: #94a3b8;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.menu a:hover {
+  background: #1f2937;
+  color: #ffb400;
+}
+
+.menu .active {
+  background: #ffb400;
+  color: #000;
+  font-weight: bold;
+}
+
+.session-box {
+  margin-top: 20px;
+  border-top: 1px solid #1f2937;
+  padding-top: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.session-user {
+  color: #cbd5e1;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.session-logout {
+  width: 100%;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+/* =======================
+   MAIN FIX (IMPORTANTE)
+======================= */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column; /* 🔥 garante alinhamento vertical */
+  padding: 25px;
+  min-height: 100vh;
+  overflow: auto;
+}
+
+/* TOPBAR */
+.topbar {
+  flex-shrink: 0;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #1f2937;
+}
+
+.topbar h2 {
+  margin: 0 0 5px 0;
+  color: #ffb400;
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  font-weight: 700;
+}
+
+.topbar p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.hero-panel {
+  margin-top: 15px;
+  margin-bottom: 25px;
+  padding: 22px 24px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+}
+
+.hero-text {
+  display: grid;
+  gap: 10px;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 180, 0, 0.15);
+  color: #ffb400;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hero-panel h3 {
+  margin: 0;
+  font-size: clamp(1.2rem, 1.7vw, 1.5rem);
+  color: #e2e8f0;
+}
+
+.hero-panel p {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.6;
+  max-width: 720px;
+}
+
+/* =======================
+   CARDS (MELHORADO)
+======================= */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px; /* 🔥 mais espaçamento */
+}
+
+/* CARD */
+.card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 25px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card.emergency {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, #111827 0%, rgba(239, 68, 68, 0.1) 100%);
+}
+
+.card.emergency h4 {
+  color: #ef4444;
+}
+
+.card.emergency p {
+  color: #ef4444;
+}
+
+/* ÍCONE NO CARD */
+.card::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 12px;
+  background: #ffb400;
+  border-radius: 50%;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.card:nth-child(1)::before { mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'); }
+.card:nth-child(2)::before { mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>'); }
+.card:nth-child(3)::before { mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'); }
+.card:nth-child(4)::before { mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>'); }
+
+/* TITULO */
+.card h4 {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* VALOR */
+.card p {
+  font-size: 36px;
+  font-weight: 900;
+  color: #ffb400;
+}
+
+/* =======================
+   ALERTAS
+======================= */
+.alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.alert.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid #f59e0b;
+  color: #f59e0b;
+}
+
+.alert.danger {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+}
+
+.alert-icon {
+  font-size: 16px;
+}
+
+/* =======================
+   TABELA (MELHORADA)
+======================= */
+.table-box {
+  flex: 1;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 300px; /* 🔥 evita colapso */
+}
+
+.table-box h3 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #ffb400;
+  font-weight: 600;
+}
+
+.table-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.table-header h3 {
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.search-input,
+.filter-select {
+  min-width: 180px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #1f2937;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+.search-input::placeholder {
+  color: #64748b;
+}
+
+.table-box {
+  overflow-x: auto;
+}
+
+.table-box table {
+  width: 100%;
+  min-width: 1200px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.table-box thead {
+  background: rgba(255, 180, 0, 0.08);
+}
+
+.table-box th,
+.table-box td {
+  padding: 14px 16px;
+  text-align: left;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.table-box th {
+  color: #94a3b8;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.table-box tr:not(:last-child) {
+  border-bottom: 1px solid #1f2937;
+}
+
+.table-box tbody tr:hover {
+  background: rgba(255, 180, 0, 0.08);
+}
+
+.table-box th:nth-child(4),
+.table-box td:nth-child(4) {
+  width: 12%;
+}
+
+.table-box th:nth-child(5),
+.table-box td:nth-child(5) {
+  width: 12%;
+}
+
+.table-box th:nth-child(6),
+.table-box td:nth-child(6) {
+  width: 18%;
+}
+
+.table-box th:nth-child(7),
+.table-box td:nth-child(7) {
+  width: 18%;
+}
+
+.valor-total {
+  text-align: right;
+  min-width: 140px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 180, 0, 0.12);
+  color: #ffb400;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-chip.low {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fda4af;
+}
+
+.status-chip.out {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fecaca;
+}
+
+@media (max-width: 1040px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #1f2937;
+    padding: 18px 20px;
+  }
+
+  .main {
+    height: auto;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .cards {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .alerts,
+  .table-header,
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .table-box {
+    padding: 16px;
+  }
+
+  .table-box table {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    display: none;
+  }
+
+  .app {
+    width: 100%;
+  }
+
+  .topbar,
+  .hero-panel,
+  .table-box,
+  .cards {
+    border-radius: 0;
+  }
+
+  .main {
+    padding: 16px;
+  }
+}
+
+/* Evitar estilos globais em tabelas.
+   O Dashboard é uma rota dentro da SPA, então regras genéricas como `th, td` afetam
+   todas as páginas após o Dashboard ser visitado. Mantemos tudo escopado em `.table-box`. */
+
+.table-box th,
+.table-box td {
+  border-bottom: 1px solid #1f2937;
+  vertical-align: middle;
+}
+
+.table-box th {
+  font-size: 13px;
+  text-transform: uppercase;
+  transition: color 0.2s ease;
+}
+
+.table-box th:hover {
+  color: #ffb400;
+}
+
+.table-box tbody tr:hover {
+  background: #0f172a;
+  transition: background 0.2s ease;
+}
+
+/* =======================
+   RESPONSIVIDADE
+======================= */
+@media (max-width: 1024px) {
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 200px;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .alerts {
+    flex-direction: column;
+  }
+
+  .main {
+    padding: 15px;
+  }
+
+  .table-box {
+    padding: 15px;
+  }
+
+  .table-box th,
+  .table-box td {
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    border-right: none;
+    border-bottom: 1px solid #1f2937;
+  }
+
+  .app {
+    flex-direction: column;
+  }
+
+  .main {
+    height: auto;
+  }
+
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .table-box {
+    overflow-x: auto;
+  }
+
+  .table-box table {
+    min-width: 600px;
+  }
+}

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Electron Preload</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #0a0f18;
+      color: #fff;
+      padding: 20px;
+    }
+    .log {
+      background: #1a1f28;
+      border-left: 3px solid #00ff00;
+      padding: 10px;
+      margin: 5px 0;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    button {
+      padding: 10px 20px;
+      background: #00ff00;
+      color: #000;
+      border: none;
+      cursor: pointer;
+      margin: 5px;
+      font-weight: bold;
+    }
+    button:hover {
+      background: #00dd00;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Teste Electron Preload</h1>
+  
+  <div id="logs"></div>
+  
+  <hr>
+  
+  <button onclick="testPing()">Test Ping</button>
+  <button onclick="testGetProdutos()">Test Get Produtos</button>
+  <button onclick="clearLogs()">Clear Logs</button>
+
+  <script>
+    console.log("🌐 Página HTML carregada");
+    console.log("🔍 window.api disponível?", !!window.api);
+    console.log("🔍 window.api:", window.api);
+  </script>
+
+    async function testPing() {
+      try {
+        log('📡 Testando ping...');
+        const result = await window.api.ping();
+        log('✅ Ping respondeu: ' + result);
+      } catch (err) {
+        log('❌ Erro no ping: ' + err.message);
+      }
+    }
+
+    async function testGetProdutos() {
+      try {
+        log('📡 Testando getProdutos...');
+        const result = await window.api.getProdutos();
+        log('✅ Produtos: ' + JSON.stringify(result));
+      } catch (err) {
+        log('❌ Erro: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

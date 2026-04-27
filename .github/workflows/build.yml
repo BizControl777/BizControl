@@ -1,0 +1,33 @@
+name: Build Windows Electron App
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 📥 Clonar repositório
+        uses: actions/checkout@v4
+
+      - name: 🟢 Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: 📦 Instalar dependências
+        run: npm install
+
+      - name: ⚛️ Build React (Vite)
+        run: npm run build
+
+      - name: 🖥️ Build Electron Windows
+        run: npm run dist:win
+
+      - name: 📤 Upload do executável
+        uses: actions/upload-artifact@v4
+        with:
+          name: BizControl-Windows
+          path: release
