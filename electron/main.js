@@ -1,7 +1,9 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const crypto = require("crypto");
-const db = require("./db");
+const { initDatabase } = require("./db");
+
+let db;
 
 const isDev = !app.isPackaged;
 const MASTER_REGISTRATION_PASSWORD = "21savage258";
@@ -45,7 +47,10 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  db = initDatabase();
+  createWindow();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

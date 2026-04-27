@@ -1,17 +1,14 @@
 const Database = require("better-sqlite3");
 const path = require("path");
+const fs = require("fs");
+const { app } = require("electron");
 
-const dbPath = path.join(__dirname, "database.sqlite");
-console.log("🗄️ [DB] Inicializando banco em:", dbPath);
+let db;
 
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
-
-const createTables = () => {
+const createTables = (database) => {
   console.log("🛠️ [DB] Criando tabelas");
 
-  db.exec(`
+  database.exec(`
     CREATE TABLE IF NOT EXISTS produtos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nome TEXT,
@@ -54,6 +51,23 @@ const createTables = () => {
   console.log("✅ [DB] Tabelas criadas/verificadas com sucesso");
 };
 
-createTables();
+/**
+ * Abre o SQLite numa pasta gravável (userData), não dentro do app.asar.
+ * Deve ser chamado após app.whenReady() no processo principal.
+ */
+function initDatabase() {
+  if (db) return db;
 
-module.exports = db;
+  const userDataPath = app.getPath("userData");
+  fs.mkdirSync(userDataPath, { recursive: true });
+  const dbPath = path.join(userDataPath, "database.sqlite");
+  console.log("🗄️ [DB] Inicializando banco em:", dbPath);
+
+  db = new Database(dbPath);
+  db.pragma("journal_mode = WAL");
+  db.pragma("foreign_keys = ON");
+  createTables(db);
+  return db;
+}
+
+module.exports = { initDatabase };

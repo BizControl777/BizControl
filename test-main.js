@@ -2,7 +2,9 @@
 
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
-const db = require("./electron/db");
+const { initDatabase } = require("./electron/db");
+
+let db;
 
 const isDev = !app.isPackaged;
 
@@ -20,39 +22,30 @@ ipcMain.handle("ping", () => {
 });
 
 ipcMain.handle("get-produtos", () => {
-  return new Promise((resolve, reject) => {
-    console.log("✅ [Main] getProdutos chamado");
-    db.all("SELECT * FROM produtos", [], (err, rows) => {
-      if (err) {
-        console.error("❌ [Main] Erro ao buscar produtos:", err);
-        reject(err);
-      } else {
-        console.log("✅ [Main] Retornando", rows?.length || 0, "produtos");
-        resolve(rows || []);
-      }
-    });
-  });
+  console.log("✅ [Main] getProdutos chamado");
+  try {
+    const rows = db.prepare("SELECT * FROM produtos").all();
+    console.log("✅ [Main] Retornando", rows?.length || 0, "produtos");
+    return rows || [];
+  } catch (err) {
+    console.error("❌ [Main] Erro ao buscar produtos:", err);
+    throw err;
+  }
 });
 
 ipcMain.handle("add-produto", (_, produto) => {
   const { nome, categoria, preco, stock } = produto;
   console.log("✅ [Main] addProduto chamado com:", { nome, categoria, preco, stock });
-  
-  return new Promise((resolve, reject) => {
-    db.run(
-      "INSERT INTO produtos (nome, categoria, preco, stock) VALUES (?, ?, ?, ?)",
-      [nome, categoria, preco, stock],
-      function (err) {
-        if (err) {
-          console.error("❌ [Main] Erro ao adicionar:", err);
-          reject(err);
-        } else {
-          console.log("✅ [Main] Produto adicionado com ID:", this.lastID);
-          resolve({ id: this.lastID });
-        }
-      }
-    );
-  });
+  try {
+    const result = db
+      .prepare("INSERT INTO produtos (nome, categoria, preco, stock) VALUES (?, ?, ?, ?)")
+      .run(nome, categoria, preco, stock);
+    console.log("✅ [Main] Produto adicionado com ID:", result.lastInsertRowid);
+    return { id: result.lastInsertRowid };
+  } catch (err) {
+    console.error("❌ [Main] Erro ao adicionar:", err);
+    throw err;
+  }
 });
 
 function createWindow() {
@@ -97,6 +90,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  db = initDatabase();
   console.log("✅ App pronto, criando janela...");
   createWindow();
 });
