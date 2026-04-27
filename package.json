@@ -52,8 +52,6 @@
 
     "asar": true,
 
-    "publish": "never",
-
     "linux": {
       "target": "AppImage"
     },
