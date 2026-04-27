@@ -20,7 +20,19 @@ jobs:
           cache: npm
 
       - name: 📦 Instalar dependências
-        run: npm ci
+        run: npm ci --ignore-scripts
+
+      - name: 🔎 Verificar driver SQLite ativo
+        shell: bash
+        run: |
+          npm ls better-sqlite3
+          if npm ls sqlite3 >/dev/null 2>&1; then
+            echo "❌ sqlite3 encontrado nas dependências. A build deve usar apenas better-sqlite3."
+            exit 1
+          fi
+
+      - name: 🔧 Rebuild de dependências nativas (Electron)
+        run: npm run postinstall
 
       - name: ⚛️ Build React (Vite)
         run: npm run build
