@@ -1,194 +1,197 @@
 import React, { useEffect, useState } from "react";
 import "./Relatorio.css";
-import Layout from "../components/Layout";
+import { useAuth } from "../context/useAuth";
 
 const Relatorio = () => {
+  const { hasPermission } = useAuth();
   const [produtos, setProdutos] = useState([]);
-  const [movimentos, setMovimentos] = useState([]);
+  const [filtros, setFiltros] = useState({
+    periodo: "mes",
+    dataInicio: "",
+    dataFim: "",
+    produtoId: "",
+  });
+  const [relatorio, setRelatorio] = useState({
+    resumo: { total_vendas: 0, total_lucro: 0, numero_vendas: 0 },
+    lucroDiario: [],
+    produtosMaisVendidos: [],
+    filtrosAplicados: null,
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    carregarDados();
+    carregarProdutos();
+    gerarRelatorio();
   }, []);
 
-  const carregarDados = async () => {
+  const carregarProdutos = async () => {
     try {
-      if (!window.api) {
-        console.error("❌ window.api não está disponível");
-        return;
-      }
-      const [prods, movs] = await Promise.all([
-        window.api.getProdutos(),
-        window.api.getMovimentos()
-      ]);
+      const prods = await window.api.getProdutos();
       setProdutos(prods);
-      setMovimentos(movs);
     } catch (err) {
-      console.error("Erro ao carregar dados:", err);
+      console.error("Erro ao carregar produtos:", err);
     }
   };
 
-  // Estatísticas
-  const totalProdutos = produtos.length;
-  const totalStock = produtos.reduce((sum, p) => sum + p.stock, 0);
-  const valorTotal = produtos.reduce((sum, p) => sum + (p.stock * p.preco), 0);
-  const produtosMaisValosos = [...produtos]
-    .sort((a, b) => (b.stock * b.preco) - (a.stock * a.preco))
-    .slice(0, 5);
-  const produtosBaixoStock = produtos.filter(p => p.stock <= 5).length;
-  const produtosSemStock = produtos.filter(p => p.stock === 0).length;
-  const totalCategorias = [...new Set(produtos.map(p => p.categoria))].length;
-  const totalMovimentos = movimentos.length;
-  const entradas = movimentos.filter(m => m.tipo === "entrada").length;
-  const saidas = movimentos.filter(m => m.tipo === "saida").length;
+  const formatMoney = (value) => `${Number(value || 0).toFixed(2)} MT`;
 
-  // Top categorias por valor
-  const categoriasPorValor = [...new Set(produtos.map(p => p.categoria))]
-    .map(cat => ({
-      categoria: cat,
-      valor: produtos
-        .filter(p => p.categoria === cat)
-        .reduce((sum, p) => sum + (p.stock * p.preco), 0),
-      quantidade: produtos.filter(p => p.categoria === cat).length
-    }))
-    .sort((a, b) => b.valor - a.valor);
+  const gerarRelatorio = async () => {
+    setLoading(true);
+    try {
+      const payload = {
+        periodo: filtros.periodo,
+        dataInicio: filtros.dataInicio || null,
+        dataFim: filtros.dataFim || null,
+        produtoId: filtros.produtoId || null,
+      };
+      const data = await window.api.getRelatorioAnalise(payload);
+      setRelatorio(data);
+    } catch (err) {
+      console.error("Erro ao gerar relatório:", err);
+      alert(`Erro ao gerar relatório: ${err?.message || err}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <Layout>
-      <div className="relatorio-container">
-        <header className="topbar">
-          <h2>Relatórios e Análises</h2>
-          <p>Visão geral das estatísticas do seu inventário</p>
-        </header>
-
-        <div className="relatorio-hero">
-          <span className="hero-pill">Dados em tempo real</span>
-          <p>Acompanhe métricas importantes do seu inventário com gráficos e estatísticas detalhadas.</p>
+    <div>
+      <div className="page-header">
+        <div className="page-title">
+          <i className="fa-solid fa-chart-line" style={{ marginRight: 8 }}></i> Relatórios
         </div>
-
-        {/* KPIs Principais */}
-        <div className="kpis-grid">
-          <div className="kpi">
-            <div className="kpi-header">
-              <h4>Total de Produtos</h4>
-              <span className="icon">📦</span>
-            </div>
-            <p className="kpi-value">{totalProdutos}</p>
-            <span className="kpi-subtitle">cadastrados no sistema</span>
-          </div>
-
-          <div className="kpi">
-            <div className="kpi-header">
-              <h4>Stock Total</h4>
-              <span className="icon">📊</span>
-            </div>
-            <p className="kpi-value">{totalStock}</p>
-            <span className="kpi-subtitle">unidades em stock</span>
-          </div>
-
-          <div className="kpi">
-            <div className="kpi-header">
-              <h4>Valor Total</h4>
-              <span className="icon">💰</span>
-            </div>
-            <p className="kpi-value">{(valorTotal / 1000).toFixed(1)}K</p>
-            <span className="kpi-subtitle">MT em inventário</span>
-          </div>
-
-          <div className="kpi">
-            <div className="kpi-header">
-              <h4>Categorias</h4>
-              <span className="icon">🏷️</span>
-            </div>
-            <p className="kpi-value">{totalCategorias}</p>
-            <span className="kpi-subtitle">tipos de produtos</span>
-          </div>
+        <div className="page-sub">Análise de desempenho e vendas</div>
+      </div>
+      <div className="cards-row cols3">
+        <div className="card">
+          <div className="card-title">Total de Vendas</div>
+          <div className="metric green">{formatMoney(relatorio.resumo.total_vendas)}</div>
+          <div className="metric-sub">{relatorio.resumo.numero_vendas} vendas realizadas</div>
         </div>
-
-        {/* Alertas */}
-        <div className="alertas-section">
-          <h3>⚠️ Alertas de Stock</h3>
-          <div className="alertas-grid">
-            <div className="alerta danger">
-              <h5>Sem Stock</h5>
-              <p>{produtosSemStock}</p>
-              <span>produtos esgotados</span>
-            </div>
-            <div className="alerta warning">
-              <h5>Stock Baixo</h5>
-              <p>{produtosBaixoStock}</p>
-              <span>produtos com stock ≤ 5</span>
-            </div>
-            <div className="alerta info">
-              <h5>Movimentos Hoje</h5>
-              <p>{totalMovimentos}</p>
-              <span>movimentações registadas</span>
-            </div>
-          </div>
+        <div className="card">
+          <div className="card-title">Número de Vendas</div>
+          <div className="metric">{relatorio.resumo.numero_vendas}</div>
+          <div className="metric-sub">registos no período</div>
         </div>
-
-        {/* Dois Painéis Lado a lado */}
-        <div className="paineis-grid">
-          {/* Painel 1: Top Produtos */}
-          <div className="painel">
-            <h3>🏆 Top 5 Produtos por Valor</h3>
-            <div className="lista">
-              {produtosMaisValosos.map((p, idx) => (
-                <div key={p.id} className="item-lista">
-                  <div className="rank">#{idx + 1}</div>
-                  <div className="info">
-                    <h5>{p.nome}</h5>
-                    <p>{p.categoria} • {p.stock} un.</p>
-                  </div>
-                  <div className="valor">
-                    {(p.stock * p.preco).toLocaleString()} MT
-                  </div>
-                </div>
-              ))}
-            </div>
+        {hasPermission("ver_relatorios_financeiros") && (
+          <div className="card">
+            <div className="card-title">Lucro Total</div>
+            <div className="metric blue">{formatMoney(relatorio.resumo.total_lucro)}</div>
+            <div className="metric-sub">margem do período</div>
           </div>
-
-          {/* Painel 2: Categorias */}
-          <div className="painel">
-            <h3>📂 Distribuição por Categoria</h3>
-            <div className="lista">
-              {categoriasPorValor.map((cat) => (
-                <div key={cat.categoria} className="item-lista">
-                  <div className="info">
-                    <h5>{cat.categoria}</h5>
-                    <p>{cat.quantidade} produtos</p>
-                  </div>
-                  <div className="valor">
-                    {cat.valor.toLocaleString()} MT
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        )}
+      </div>
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">Filtros</div>
         </div>
-
-        {/* Estatísticas de Movimentos */}
-        <div className="painel full">
-          <h3>📈 Estatísticas de Movimentos</h3>
-          <div className="movimentos-stats">
-            <div className="stat-card entrada">
-              <h4>Entradas</h4>
-              <p className="big-number">{entradas}</p>
-              <span>movimentações de entrada</span>
-            </div>
-            <div className="stat-card saida">
-              <h4>Saídas</h4>
-              <p className="big-number">{saidas}</p>
-              <span>movimentações de saída</span>
-            </div>
-            <div className="stat-card total">
-              <h4>Total</h4>
-              <p className="big-number">{totalMovimentos}</p>
-              <span>movimentações registadas</span>
-            </div>
-          </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <select
+            value={filtros.periodo}
+            onChange={(e) => setFiltros((prev) => ({ ...prev, periodo: e.target.value }))}
+          >
+            <option value="hoje">Hoje</option>
+            <option value="semana">Semana</option>
+            <option value="mes">Mês</option>
+            <option value="personalizado">Personalizado</option>
+          </select>
+          <input
+            type="date"
+            value={filtros.dataInicio}
+            onChange={(e) => setFiltros((prev) => ({ ...prev, dataInicio: e.target.value }))}
+            disabled={filtros.periodo !== "personalizado"}
+          />
+          <input
+            type="date"
+            value={filtros.dataFim}
+            onChange={(e) => setFiltros((prev) => ({ ...prev, dataFim: e.target.value }))}
+            disabled={filtros.periodo !== "personalizado"}
+          />
+          <select
+            value={filtros.produtoId}
+            onChange={(e) => setFiltros((prev) => ({ ...prev, produtoId: e.target.value }))}
+          >
+            <option value="">Todos produtos</option>
+            {produtos.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
+          </select>
+          <button className="btn btn-blue" onClick={gerarRelatorio} disabled={loading}>
+            {loading ? "Gerando..." : "Gerar Relatório"}
+          </button>
         </div>
       </div>
-    </Layout>
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">Lucro Diário</div>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Total de Vendas</th>
+                {hasPermission("ver_relatorios_financeiros") && <th>Total de Lucro</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {relatorio.lucroDiario.length > 0 ? (
+                relatorio.lucroDiario.map((item) => (
+                  <tr key={item.data}>
+                    <td>{item.data}</td>
+                    <td style={{ color: "var(--green)", fontWeight: 600 }}>{formatMoney(item.total_vendas)}</td>
+                    {hasPermission("ver_relatorios_financeiros") && (
+                      <td style={{ color: "var(--blue)", fontWeight: 600 }}>{formatMoney(item.total_lucro)}</td>
+                    )}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={hasPermission("ver_relatorios_financeiros") ? 3 : 2} style={{ textAlign: "center", color: "var(--text2)" }}>
+                    Sem dados no período
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">Produtos Mais Vendidos</div>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Quantidade Vendida</th>
+                <th>Ranking</th>
+              </tr>
+            </thead>
+            <tbody>
+              {relatorio.produtosMaisVendidos.length > 0 ? (
+                relatorio.produtosMaisVendidos.map((item, index) => (
+                  <tr key={item.produto_id}>
+                    <td>{item.nome}</td>
+                    <td style={{ fontWeight: 600 }}>{item.quantidade_total_vendida}</td>
+                    <td><span className="badge green">#{index + 1}</span></td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="3" style={{ textAlign: "center", color: "var(--text2)" }}>
+                    Sem dados no período
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   );
 };
 

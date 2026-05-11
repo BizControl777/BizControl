@@ -2,7 +2,7 @@
    CONTAINER
 ======================= */
 .inventario-container {
-  padding: 25px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -14,17 +14,17 @@
 ======================= */
 .topbar {
   padding-bottom: 15px;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
 }
 
 .topbar h2 {
-  color: #ffb400;
+  color: var(--accent);
   font-size: clamp(1.5rem, 2vw, 2rem);
   margin: 0 0 5px 0;
 }
 
 .topbar p {
-  color: #94a3b8;
+  color: var(--text2);
   font-size: 0.95rem;
   margin: 0;
 }
@@ -32,8 +32,8 @@
 .inventario-hero {
   display: grid;
   gap: 10px;
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px 20px;
 }
@@ -42,15 +42,15 @@
   display: inline-flex;
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(255, 180, 0, 0.14);
-  color: #ffb400;
+  background: rgba(0, 212, 170, 0.14);
+  color: var(--accent);
   font-size: 0.8rem;
   font-weight: 700;
   width: fit-content;
 }
 
 .inventario-hero p {
-  color: #cbd5e1;
+  color: var(--text);
   line-height: 1.6;
   margin: 0;
 }
@@ -68,18 +68,18 @@
 .filter-select {
   padding: 12px;
   border-radius: 10px;
-  border: 1px solid #1f2937;
-  background: #111827;
-  color: #e2e8f0;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text);
   flex: 1;
   min-width: 180px;
 }
 
 .search-input:focus,
 .filter-select:focus {
-  border-color: #ffb400;
+  border-color: var(--accent);
   outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 180, 0, 0.15);
+  box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.15);
 }
 
 /* =======================
@@ -92,22 +92,22 @@
 }
 
 .stat {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 18px;
   text-align: center;
 }
 
 .stat h4 {
-  color: #94a3b8;
+  color: var(--text2);
   font-size: 0.85rem;
   text-transform: uppercase;
   margin: 0 0 8px 0;
 }
 
 .stat p {
-  color: #ffb400;
+  color: var(--accent);
   font-size: 28px;
   font-weight: bold;
   margin: 0;
@@ -118,8 +118,8 @@
 ======================= */
 .table-wrapper {
   flex: 1;
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--bg2);
+  border: 1px solid var(--border);
   border-radius: 14px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -128,27 +128,27 @@
 .inventario-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 980px;
+  min-width: 1120px;
   table-layout: fixed;
 }
 
 .inventario-table th {
-  background: #111827;
-  color: #94a3b8;
+  background: var(--bg2);
+  color: var(--text2);
   font-size: 0.85rem;
   text-transform: uppercase;
   padding: 14px 16px;
   text-align: left;
   font-weight: 600;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
 }
 
 .inventario-table td {
   padding: 14px 16px;
-  border-bottom: 1px solid #1f2937;
-  color: #cbd5e1;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
   white-space: normal;
   overflow-wrap: anywhere;
   text-align: left;
@@ -156,21 +156,23 @@
 
 .inventario-table th:nth-child(4),
 .inventario-table th:nth-child(5),
-.inventario-table th:nth-child(6) {
+.inventario-table th:nth-child(6),
+.inventario-table th:nth-child(7) {
   text-align: right;
 }
 
-.inventario-table th:nth-child(7) {
+.inventario-table th:nth-child(8) {
   text-align: center;
 }
 
 .inventario-table td:nth-child(4),
 .inventario-table td:nth-child(5),
-.inventario-table td:nth-child(6) {
+.inventario-table td:nth-child(6),
+.inventario-table td:nth-child(7) {
   text-align: right;
 }
 
-.inventario-table td:nth-child(7) {
+.inventario-table td:nth-child(8) {
   text-align: center;
 }
 
@@ -206,6 +208,11 @@
 
 .inventario-table th:nth-child(7),
 .inventario-table td:nth-child(7) {
+  width: 140px; /* Lucro */
+}
+
+.inventario-table th:nth-child(8),
+.inventario-table td:nth-child(8) {
   width: 150px; /* Ações */
 }
 
@@ -215,7 +222,7 @@
 }
 
 .inventario-table tbody tr:hover {
-  background: rgba(255, 180, 0, 0.08);
+  background: rgba(0, 212, 170, 0.08);
 }
 
 .inventario-table tbody tr:nth-child(even) {
@@ -228,7 +235,7 @@
 }
 
 .stock-warning {
-  color: #f59e0b;
+  color: var(--amber);
   font-weight: bold;
 }
 
@@ -241,16 +248,16 @@
   width: 80px;
   padding: 8px;
   border-radius: 6px;
-  border: 1px solid #ffb400;
-  background: #111827;
-  color: #ffb400;
+  border: 1px solid var(--accent);
+  background: var(--bg2);
+  color: var(--accent);
   text-align: center;
   font-weight: bold;
 }
 
 .stock-input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 180, 0, 0.2);
+  box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.2);
 }
 
 /* =======================
@@ -279,12 +286,12 @@
 }
 
 .btn-edit {
-  background: #ffb400;
+  background: var(--accent);
   color: #000;
 }
 
 .btn-edit:hover {
-  background: #f59e0b;
+  background: var(--amber);
 }
 
 .btn-save {

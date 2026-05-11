@@ -37,10 +37,20 @@ jobs:
       - name: ⚛️ Build React (Vite)
         run: npm run build
 
+      - name: Escrever senha mestre para o instalador (opcional)
+        shell: bash
+        env:
+          BIZCONTROL_MASTER_PASSWORD: ${{ secrets.BIZCONTROL_MASTER_PASSWORD }}
+        run: |
+          if [ -n "${BIZCONTROL_MASTER_PASSWORD:-}" ]; then
+            printf '%s' "$BIZCONTROL_MASTER_PASSWORD" > electron/.registration-secret
+            echo "Secret BIZCONTROL_MASTER_PASSWORD aplicado ao pacote."
+          else
+            echo "::warning::Defina o secret BIZCONTROL_MASTER_PASSWORD no repositório para o primeiro registo funcionar no .exe."
+          fi
+
       - name: 🖥️ Build Electron Windows
         run: npm run dist:win
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: 📤 Upload do executável
         uses: actions/upload-artifact@v4

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import "./Movimentos.css";
 import { useAuth } from "../context/useAuth";
 
-const Movimentos = () => {
+const Vendas = () => {
   const { user } = useAuth();
   const [movimentos, setMovimentos] = useState([]);
   const [produtos, setProdutos] = useState([]);
@@ -12,12 +12,11 @@ const Movimentos = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({
     produto_id: "",
-    tipo: "entrada",
+    tipo: "venda",
     quantidade: "",
     observacao: "",
     preco_unitario: "",
     cliente_id: "",
-    fornecedor_id: "",
     forma_pagamento: "dinheiro",
     status_pagamento: "pago",
   });
@@ -32,16 +31,14 @@ const Movimentos = () => {
         console.error("❌ window.api não está disponível");
         return;
       }
-      const [movs, prods, cls, fors] = await Promise.all([
+      const [movs, prods, cls] = await Promise.all([
         window.api.getMovimentos(),
         window.api.getProdutos(),
         window.api.getClientes(),
-        window.api.getFornecedores(),
       ]);
       setMovimentos(movs);
       setProdutos(prods);
       setClientes(cls);
-      setFornecedores(fors);
     } catch (err) {
       console.error("Erro ao carregar dados:", err);
     }
@@ -66,12 +63,11 @@ const Movimentos = () => {
   const handleAbrirModal = async () => {
     setForm({
       produto_id: "",
-      tipo: "entrada",
+      tipo: "venda",
       quantidade: "",
       observacao: "",
       preco_unitario: "",
       cliente_id: "",
-      fornecedor_id: "",
       forma_pagamento: "dinheiro",
       status_pagamento: "pago",
     });
@@ -102,14 +98,25 @@ const Movimentos = () => {
 
     const produtoId = Number(form.produto_id);
     const quantidade = Number(form.quantidade);
+    const produtoSelecionado = produtos.find((p) => Number(p.id) === produtoId);
 
     if (!produtoId || !Number.isInteger(produtoId) || produtoId <= 0) {
       alert("Selecione um produto válido.");
       return;
     }
 
+    if (form.tipo === "venda" && !form.cliente_id) {
+      alert("Selecione um cliente para a venda.");
+      return;
+    }
+
     if (!Number.isFinite(quantidade) || quantidade <= 0) {
       alert("Informe uma quantidade válida (maior que 0).");
+      return;
+    }
+
+    if (form.tipo === "venda" && (!form.preco_unitario || Number(form.preco_unitario) <= 0)) {
+      alert("Informe o preço unitário da venda.");
       return;
     }
 
@@ -122,7 +129,6 @@ const Movimentos = () => {
         observacao: form.observacao || "",
         preco_unitario: Number(form.preco_unitario || 0),
         cliente_id: form.cliente_id || null,
-        fornecedor_id: form.fornecedor_id || null,
         forma_pagamento: form.forma_pagamento,
         status_pagamento: form.status_pagamento,
         usuario_id: user.id,
@@ -158,9 +164,7 @@ const Movimentos = () => {
     }
   };
 
-  const filtrados = movimentos.filter(m => {
-    return filtroTipo === "" || m.tipo === filtroTipo;
-  });
+  const filtrados = movimentos.filter(m => m.tipo === "venda");
 
   const getNomeProduto = (produtoId) => {
     const produto = produtos.find(p => p.id === produtoId);
@@ -169,6 +173,13 @@ const Movimentos = () => {
 
   const getTipoClass = (tipo) => {
     return tipo === "entrada" ? "tipo-entrada" : "tipo-saida";
+  };
+
+  const formatarData = (valor) => {
+    if (!valor) return "-";
+    const data = new Date(valor);
+    if (Number.isNaN(data.getTime())) return String(valor);
+    return data.toLocaleDateString("pt-PT") + " " + data.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
   };
 
   const fmt = (n) => "MT " + Number(n).toLocaleString("pt-MZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -199,29 +210,25 @@ const Movimentos = () => {
     <div>
       <div className="page-header">
         <div className="page-title">
-          <i className="fa-solid fa-right-left" style={{ marginRight: 8 }}></i> Movimentos
+          <i className="fa-solid fa-cash-register" style={{ marginRight: 8 }}></i> Vendas
         </div>
-        <div className="page-sub">Histórico de entradas e saídas de produtos</div>
+        <div className="page-sub">Registo de vendas de produtos</div>
       </div>
-      <div className="cards-row cols3" style={{ marginBottom: 20 }}>
+      <div className="cards-row cols2" style={{ marginBottom: 20 }}>
         <div className="card">
-          <div className="card-title">Total Movimentos</div>
+          <div className="card-title">Total Vendas</div>
           <div className="metric">{filtrados.length}</div>
         </div>
         <div className="card">
-          <div className="card-title">Entradas</div>
-          <div className="metric green">{filtrados.filter(m => m.tipo === "entrada").length}</div>
-        </div>
-        <div className="card">
-          <div className="card-title">Saídas</div>
-          <div className="metric blue">{filtrados.filter(m => m.tipo === "venda").length}</div>
+          <div className="card-title">Receita Total</div>
+          <div className="metric green">{filtrados.reduce((sum, m) => sum + (m.quantidade * m.preco_unitario), 0).toFixed(2)} MT</div>
         </div>
       </div>
       <div className="card">
         <div className="card-header">
-          <div className="card-title">Histórico de Movimentos</div>
+          <div className="card-title">Histórico de Vendas</div>
           <button className="btn btn-sm btn-green" onClick={handleAbrirModal}>
-            <i className="fa-solid fa-plus" style={{ marginRight: 8 }}></i> Novo Movimento
+            <i className="fa-solid fa-plus" style={{ marginRight: 8 }}></i> Nova Venda / Entrada
           </button>
         </div>
         <div className="table-wrap">
@@ -290,17 +297,34 @@ const Movimentos = () => {
                   ))}
                 </select>
               </div>
-              <div className="field">
+                      <div className="field">
                 <label>Tipo *</label>
                 <select
                   name="tipo"
                   value={form.tipo}
                   onChange={handleChange}
                 >
-                  <option value="entrada">Entrada</option>
                   <option value="venda">Venda</option>
+                  <option value="entrada">Entrada</option>
                 </select>
               </div>
+              {form.tipo === "venda" ? (
+                <div className="field">
+                  <label>Cliente *</label>
+                  <select
+                    name="cliente_id"
+                    value={form.cliente_id}
+                    onChange={handleChange}
+                  >
+                    <option value="">Selecione um cliente</option>
+                    {clientes.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div className="field">
                 <label>Quantidade *</label>
                 <input
@@ -325,6 +349,24 @@ const Movimentos = () => {
                 />
               </div>
               <div className="field">
+                <label>Total da Venda</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={totalVendaPreview > 0 ? `${fmt(totalVendaPreview)} (${quantidadeDigitada} ${produtoSelecionado?.unidade_base || "unidade"})` : "-"}
+                  style={{ background: "var(--bg2)" }}
+                />
+              </div>
+              <div className="field">
+                <label>Lucro estimado</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={form.tipo === "venda" ? `${fmt(lucroPreview)} (${produtoSelecionado ? produtoSelecionado.unidade_base || "unidade" : "unidade"})` : "-"}
+                  style={{ background: "var(--bg2)", color: lucroPreview >= 0 ? "var(--green)" : "var(--red)" }}
+                />
+              </div>
+              <div className="field">
                 <label>Observação</label>
                 <textarea
                   name="observacao"
@@ -346,4 +388,4 @@ const Movimentos = () => {
   );
 };
 
-export default Movimentos;
+export default Vendas;

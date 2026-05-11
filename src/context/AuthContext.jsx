@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useEffect, useMemo, useState } from "react";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 const AUTH_STORAGE_KEY = "bizcontrol.auth.session";
 
 export const AuthProvider = ({ children }) => {
@@ -50,17 +50,14 @@ export const AuthProvider = ({ children }) => {
       loading,
       login,
       logout,
+      hasPermission: (permissionName) => {
+        if (!user) return false;
+        if (user.perfil === "admin") return true;
+        return Array.isArray(user.permissoes) && user.permissoes.includes(permissionName);
+      },
     }),
     [user, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth deve ser usado dentro de AuthProvider.");
-  }
-  return context;
 };

@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <title>BizController 360</title>
+  </head>
+  <body>
+    <!-- LOGIN -->
+    <div id="login-screen">
+      <div class="login-box">
+        <div class="logo-area">
+          <div class="logo-icon"><i class="fa-solid fa-chart-simple"></i></div>
+          <div class="logo-title">BizController 360</div>
+          <div class="logo-sub">Gestão de Stock & Vendas</div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="text" id="login-user" placeholder="ex: admin@bizcontrol.local" value="" />
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="login-pass" placeholder="••••••" value="" />
+        </div>
+        <button class="btn-primary" onclick="window.doLogin()">Entrar no Sistema</button>
+        <div class="demo-hint">Abra via Electron para autenticar com base de dados.</div>
+      </div>
+    </div>
+
+    <!-- APP SHELL -->
+    <div id="app-shell" class="hidden">
+      <div class="topbar">
+        <div class="topbar-left">
+          <span class="topbar-logo"
+            ><i class="fa-solid fa-chart-simple" style="margin-right: 8px"></i>
+            BizController 360</span
+          >
+          <span class="topbar-company" id="topbar-company">Empresa Demo</span>
+        </div>
+        <div class="topbar-user">
+          <div style="text-align: right">
+            <div class="user-name" id="topbar-username">—</div>
+            <div class="user-role" id="topbar-userrole">—</div>
+          </div>
+          <div class="user-avatar" id="topbar-avatar">?</div>
+          <button class="btn-logout" onclick="window.logout()">Sair</button>
+        </div>
+      </div>
+      <div class="main-layout">
+        <div class="sidebar" id="sidebar"></div>
+        <div class="content" id="content-area"></div>
+      </div>
+    </div>
+
+    <!-- MODAL -->
+    <div class="modal-overlay hidden" id="modal-overlay">
+      <div class="modal" id="modal-body"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,149 @@
+/* Páginas simples de cadastro (Clientes, Fornecedores): não usar produtos-table (8 colunas). */
+
+.entity-page {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 100vh;
+}
+
+.entity-header {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.entity-header h2 {
+  color: var(--text);
+  margin: 0 0 6px 0;
+  font-size: clamp(1.4rem, 2vw, 1.85rem);
+}
+
+.entity-header p {
+  margin: 0;
+  color: var(--text2);
+  font-size: 0.95rem;
+}
+
+.entity-form {
+  display: grid;
+  gap: 10px;
+  max-width: 520px;
+}
+
+.entity-form input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.entity-form input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 212, 170, 0.15);
+}
+
+.entity-form button {
+  margin-top: 4px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.entity-form button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.entity-table-wrap {
+  overflow-x: auto;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.entity-table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.entity-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.entity-table tbody td {
+  padding: 14px 16px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.entity-table tbody tr:hover {
+  background: rgba(0, 212, 170, 0.06);
+}
+
+.entity-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Clientes: 3 colunas */
+.entity-table--clientes th:nth-child(1),
+.entity-table--clientes td:nth-child(1) {
+  width: 32%;
+}
+.entity-table--clientes th:nth-child(2),
+.entity-table--clientes td:nth-child(2) {
+  width: 22%;
+  white-space: nowrap;
+}
+.entity-table--clientes th:nth-child(3),
+.entity-table--clientes td:nth-child(3) {
+  width: 46%;
+}
+
+/* Fornecedores: 2 colunas */
+.entity-table--fornecedores th:nth-child(1),
+.entity-table--fornecedores td:nth-child(1) {
+  width: 48%;
+}
+.entity-table--fornecedores th:nth-child(2),
+.entity-table--fornecedores td:nth-child(2) {
+  width: 52%;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.entity-table--fornecedores th:nth-child(2) {
+  text-align: right;
+}
+
+.entity-empty {
+  text-align: center;
+  color: var(--text3);
+  padding: 28px 16px !important;
+}

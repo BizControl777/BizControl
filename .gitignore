@@ -21,6 +21,14 @@ out/
 *.snap
 *.zip
 
+# SQLite local na pasta electron (copias antigas — a app usa userData na instalação)
+electron/database.sqlite
+electron/database.sqlite-wal
+electron/database.sqlite-shm
+
+# Gerado apenas na máquina de build / CI; nunca commitar
+electron/.registration-secret
+
 # Local env
 *.local
 
@@ -36,3 +44,5 @@ out/
 *.njsproj
 *.sln
 *.sw?
+.aider*
+.env

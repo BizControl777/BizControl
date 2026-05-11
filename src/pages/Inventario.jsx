@@ -1,17 +1,28 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "./Inventario.css";
-import Layout from "../components/Layout";
+import { useAuth } from "../context/useAuth";
+import Chart from 'chart.js/auto';
 
 const Inventario = () => {
+  const { user } = useAuth();
   const [produtos, setProdutos] = useState([]);
   const [search, setSearch] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [editando, setEditando] = useState(null);
   const [stockTemp, setStockTemp] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [produtoEditando, setProdutoEditando] = useState(null);
+  const chartRef = useRef(null);
 
   useEffect(() => {
     carregarProdutos();
   }, []);
+
+  useEffect(() => {
+    if (produtos.length > 0) {
+      renderChart();
+    }
+  }, [produtos]);
 
   const carregarProdutos = async () => {
     try {
@@ -35,25 +46,38 @@ const Inventario = () => {
   const categorias = [...new Set(produtos.map(p => p.categoria || "Sem categoria"))];
 
   const iniciarEdicao = (produto) => {
-    setEditando(produto.id);
+    setProdutoEditando(produto);
     setStockTemp(produto.stock.toString());
+    setModalOpen(true);
   };
 
-  const salvarStock = async (id) => {
-    const produto = produtos.find(p => p.id === id);
-    if (!produto) return;
+  const salvarStock = async () => {
+    if (!produtoEditando) return;
+    const stockNumero = Number(stockTemp);
+
+    if (!user?.id) {
+      alert("Sessão expirada. Faça login novamente.");
+      return;
+    }
+    if (!Number.isFinite(stockNumero) || stockNumero < 0) {
+      alert("Informe um stock válido (maior ou igual a 0).");
+      return;
+    }
 
     try {
       await window.api.updateProduto({
-        ...produto,
-        stock: parseInt(stockTemp)
+        ...produtoEditando,
+        stock: stockNumero,
+        quantidade_total: stockNumero,
+        usuario_id: user.id,
       });
       await carregarProdutos();
-      setEditando(null);
+      setModalOpen(false);
+      setProdutoEditando(null);
       alert("✅ Stock atualizado com sucesso!");
     } catch (err) {
       console.error("Erro ao atualizar stock:", err);
-      alert("❌ Erro ao atualizar stock");
+      alert(`❌ ${err?.message || "Erro ao atualizar stock"}`);
     }
   };
 
@@ -62,111 +86,167 @@ const Inventario = () => {
     setStockTemp("");
   };
 
-  const getStockClass = (stock) => {
-    if (stock <= 0) return "stock-danger";
-    if (stock <= 5) return "stock-warning";
-    return "stock-ok";
+  const renderChart = () => {
+    const catStock = {};
+    produtos.forEach((p) => {
+      catStock[p.categoria] = (catStock[p.categoria] || 0) + p.stock;
+    });
+
+    const labels = Object.keys(catStock);
+    const data = Object.values(catStock);
+
+    const ctx = document.getElementById('chart-stock-pie');
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: data,
+            backgroundColor: ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6'],
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+            }
+          }
+        }
+      });
+    }
   };
 
   return (
-    <Layout>
-      <div className="inventario-container">
-        <header className="topbar">
-          <h2>Gestão de Inventário</h2>
-          <p>Monitorar e gerenciar stock de produtos</p>
-        </header>
-
-        <div className="inventario-hero">
-          <span className="hero-pill">Offline pronto</span>
-          <p>Visualize e atualize o stock de todos os produtos em tempo real, mesmo sem conexão.</p>
+    <div>
+      <div className="page-header">
+        <div className="page-title">
+          <i className="fa-solid fa-box" style={{ marginRight: 8 }}></i> Nível de Stock
         </div>
-
-        <div className="inventario-controls">
-          <input
-            type="text"
-            placeholder="Pesquisar produto..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="search-input"
-          />
-          <select
-            value={filtroCategoria}
-            onChange={(e) => setFiltroCategoria(e.target.value)}
-            className="filter-select"
-          >
-            <option value="">Todas as categorias</option>
-            {categorias.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="inventario-stats">
-          <div className="stat">
-            <h4>Total Produtos</h4>
-            <p>{filtrados.length}</p>
+        <div className="page-sub">Visão geral do inventário</div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Distribuição por Categoria</div>
           </div>
-          <div className="stat">
-            <h4>Stock Total</h4>
-            <p>{filtrados.reduce((sum, p) => sum + p.stock, 0)}</p>
-          </div>
-          <div className="stat">
-            <h4>Valor Total</h4>
-            <p>{(filtrados.reduce((sum, p) => sum + (p.stock * p.preco), 0)).toLocaleString()} MT</p>
+          <div className="chart-container">
+            <canvas id="chart-stock-pie" role="img" aria-label="Stock por categoria"></canvas>
           </div>
         </div>
-
-        <div className="table-wrapper">
-          <table className="inventario-table">
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Alertas</div>
+          </div>
+          {produtos.filter((p) => p.stock === 0).map((p) => (
+            <div key={p.id} className="alert-card alert-red">
+              <i className="fa-solid fa-ban" style={{ marginRight: 8 }}></i> {p.nome} — Esgotado!
+            </div>
+          ))}
+          {produtos.filter((p) => p.stock > 0 && p.stock <= 5).map((p) => (
+            <div key={p.id} className="alert-card alert-amber">
+              <i className="fa-solid fa-triangle-exclamation" style={{ marginRight: 8 }}></i> {p.nome} — Apenas {p.stock} unidades
+            </div>
+          ))}
+          {!produtos.some((p) => p.stock <= 5) && (
+            <div className="alert-card alert-green">
+              <i className="fa-solid fa-check" style={{ marginRight: 8 }}></i> Todos os stocks estão adequados!
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">Tabela de Stock</div>
+        </div>
+        <div className="table-wrap">
+          <table>
             <thead>
               <tr>
-                <th>ID</th>
                 <th>Produto</th>
                 <th>Categoria</th>
-                <th>Preço</th>
-                <th>Stock</th>
-                <th>Valor</th>
-                <th>Ações</th>
+                <th>Stock Actual</th>
+                <th>Mínimo</th>
+                <th>Nível</th>
+                <th>Acção</th>
               </tr>
             </thead>
             <tbody>
-              {filtrados.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.id}</td>
-                  <td>{p.nome}</td>
-                  <td>{p.categoria}</td>
-                  <td>{p.preco.toLocaleString()} MT</td>
-                  <td className={getStockClass(p.stock)}>
-                    {editando === p.id ? (
-                      <input
-                        type="number"
-                        value={stockTemp}
-                        onChange={(e) => setStockTemp(e.target.value)}
-                        className="stock-input"
-                        autoFocus
-                      />
-                    ) : (
-                      p.stock
-                    )}
-                  </td>
-                  <td className="valor-total">{(p.stock * p.preco).toLocaleString()} MT</td>
-                  <td className="actions">
-                    {editando === p.id ? (
-                      <>
-                        <button className="btn-save" onClick={() => salvarStock(p.id)}>✓</button>
-                        <button className="btn-cancel" onClick={cancelarEdicao}>✕</button>
-                      </>
-                    ) : (
-                      <button className="btn-edit" onClick={() => iniciarEdicao(p)}>Editar</button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {produtos.map((p) => {
+                const pct = Math.min(100, Math.round((p.stock / (5 * 3)) * 100));
+                const oos = p.stock === 0;
+                const low = p.stock > 0 && p.stock <= 5;
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <span style={{ fontSize: 16, marginRight: 6 }}>
+                        <i className="fa-solid fa-box"></i>
+                      </span>
+                      <strong>{p.nome}</strong>
+                    </td>
+                    <td>
+                      <span className="tag">{p.categoria}</span>
+                    </td>
+                    <td style={{ fontWeight: 600, color: oos ? "var(--red)" : low ? "var(--amber)" : "var(--green)" }}>
+                      {p.stock}
+                    </td>
+                    <td style={{ color: "var(--text2)" }}>5</td>
+                    <td style={{ minWidth: 100 }}>
+                      <div className="progress-bar">
+                        <div
+                          className="progress-fill"
+                          style={{
+                            width: `${pct}%`,
+                            background: oos ? "var(--red)" : low ? "var(--amber)" : "var(--green)"
+                          }}
+                        ></div>
+                      </div>
+                    </td>
+                    <td>
+                      <button className="btn btn-sm btn-blue" onClick={() => iniciarEdicao(p)}>+ Repor</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
-    </Layout>
+      {modalOpen && produtoEditando && (
+        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">Repor Stock</div>
+              <button className="modal-close" onClick={() => setModalOpen(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="field">
+                <label>Produto</label>
+                <input value={produtoEditando.nome} readOnly />
+              </div>
+              <div className="field">
+                <label>Stock Atual</label>
+                <input value={produtoEditando.stock} readOnly />
+              </div>
+              <div className="field">
+                <label>Novo Stock</label>
+                <input
+                  type="number"
+                  value={stockTemp}
+                  onChange={(e) => setStockTemp(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={salvarStock}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

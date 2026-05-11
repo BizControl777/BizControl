@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import "./Utilizadores.css";
-import Layout from "../components/Layout";
+import { useAuth } from "../context/useAuth";
 
 const Utilizadores = () => {
+  const { user } = useAuth();
   const [utilizadores, setUtilizadores] = useState([]);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -12,7 +13,8 @@ const Utilizadores = () => {
     nome: "",
     email: "",
     telefone: "",
-    funcao: ""
+    perfil: "funcionario",
+    senha: ""
   });
 
   useEffect(() => {
@@ -44,7 +46,7 @@ const Utilizadores = () => {
 
   const abrirAdd = () => {
     setModo("add");
-    setForm({ id: null, nome: "", email: "", telefone: "", funcao: "" });
+    setForm({ id: null, nome: "", email: "", telefone: "", perfil: "funcionario", senha: "" });
     setModalOpen(true);
   };
 
@@ -55,23 +57,28 @@ const Utilizadores = () => {
   };
 
   const handleSalvar = async () => {
-    if (!form.nome || !form.email || !form.funcao) {
+    if (!form.nome || !form.email || !form.perfil) {
       alert("Preencha os campos obrigatórios!");
       return;
     }
 
     try {
       if (modo === "add") {
-        await window.api.addUtilizador(form);
+        const s = String(form.senha || "").trim();
+        if (s.length < 6) {
+          alert("Na criação, defina uma senha com pelo menos 6 caracteres.");
+          return;
+        }
+        await window.api.addUtilizador({ ...form, usuario_id: user.id, funcao: form.perfil });
       } else {
-        await window.api.updateUtilizador(form);
+        await window.api.updateUtilizador({ ...form, usuario_id: user.id, funcao: form.perfil });
       }
       setModalOpen(false);
       await carregarUtilizadores();
       alert("✅ " + (modo === "add" ? "Utilizador adicionado" : "Utilizador atualizado") + " com sucesso!");
     } catch (err) {
       console.error("Erro ao salvar:", err);
-      alert("❌ Erro ao salvar utilizador");
+      alert(`❌ ${err?.message || "Erro ao salvar utilizador"}`);
     }
   };
 
@@ -79,7 +86,7 @@ const Utilizadores = () => {
     if (!window.confirm("Tens certeza que queres apagar este utilizador?")) return;
 
     try {
-      await window.api.deleteUtilizador(id);
+      await window.api.deleteUtilizador({ id, usuario_id: user.id });
       await carregarUtilizadores();
       alert("✅ Utilizador removido com sucesso!");
     } catch (err) {
@@ -90,9 +97,8 @@ const Utilizadores = () => {
 
   const getFuncaoColor = (funcao) => {
     switch (funcao?.toLowerCase()) {
-      case "administrador": return "funcao-admin";
-      case "gerente": return "funcao-gerente";
-      case "operador": return "funcao-operador";
+      case "admin": return "funcao-admin";
+      case "funcionario": return "funcao-operador";
       default: return "funcao-user";
     }
   };
@@ -104,61 +110,56 @@ const Utilizadores = () => {
   };
 
   return (
-    <Layout>
-      <div className="utilizadores-container">
-        <header className="topbar">
-          <h2>Gestão de Utilizadores</h2>
-          <p>Controle de acesso e funções dos utilizadores</p>
-        </header>
-
-        <div className="utilizadores-hero">
-          <span className="hero-pill">Acesso seguro</span>
-          <p>Crie e gerencie contas de utilizadores com diferentes níveis de acesso e permissões.</p>
+    <div>
+      <div className="page-header">
+        <div className="page-title">
+          <i className="fa-solid fa-user-group" style={{ marginRight: 8 }}></i> Utilizadores
         </div>
-
-        <div className="utilizadores-header">
-          <div>
+        <div className="page-sub">Gestão de contas e permissões</div>
+      </div>
+      <div className="cards-row cols4">
+        <div className="card">
+          <div className="card-title">Total</div>
+          <div className="metric">{utilizadores.length}</div>
+        </div>
+        <div className="card">
+          <div className="card-title">Administradores</div>
+          <div className="metric red">{utilizadores.filter(u => u.perfil === "admin").length}</div>
+        </div>
+        <div className="card">
+          <div className="card-title">Funcionários</div>
+          <div className="metric blue">{utilizadores.filter(u => u.perfil === "funcionario").length}</div>
+        </div>
+        <div className="card">
+          <div className="card-title">Ativos</div>
+          <div className="metric green">{utilizadores.filter(u => u.ativo !== false).length}</div>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-header">
+          <div className="card-title">Utilizadores Registados</div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <input
               type="text"
-              placeholder="Pesquisar utilizador..."
+              placeholder="Pesquisar..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="search-input"
+              style={{ padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--sm-r)", background: "var(--bg2)", color: "var(--text)" }}
             />
-          </div>
-          <button className="btn-add" onClick={abrirAdd}>
-            + Novo Utilizador
-          </button>
-        </div>
-
-        <div className="utilizadores-stats">
-          <div className="stat">
-            <h4>Total</h4>
-            <p>{utilizadores.length}</p>
-          </div>
-          <div className="stat">
-            <h4>Admin</h4>
-            <p>{utilizadores.filter(u => u.funcao === "administrador").length}</p>
-          </div>
-          <div className="stat">
-            <h4>Gerentes</h4>
-            <p>{utilizadores.filter(u => u.funcao === "gerente").length}</p>
-          </div>
-          <div className="stat">
-            <h4>Operadores</h4>
-            <p>{utilizadores.filter(u => u.funcao === "operador").length}</p>
+            <button className="btn btn-green" onClick={abrirAdd}>
+              <i className="fa-solid fa-plus" style={{ marginRight: 8 }}></i> Novo Utilizador
+            </button>
           </div>
         </div>
-
-        <div className="table-wrapper">
-          <table className="utilizadores-table">
+        <div className="table-wrap">
+          <table>
             <thead>
               <tr>
                 <th>Nome</th>
                 <th>Email</th>
                 <th>Telefone</th>
                 <th>Função</th>
-                <th>Data Criação</th>
+                <th>Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -170,20 +171,30 @@ const Utilizadores = () => {
                     <td>{u.email}</td>
                     <td>{u.telefone || "—"}</td>
                     <td>
-                      <span className={`funcao-badge ${getFuncaoColor(u.funcao)}`}>
-                        {u.funcao}
+                      <span className={`badge ${u.perfil === "admin" ? "red" : "blue"}`}>
+                        {u.perfil === "admin" ? "Admin" : "Funcionário"}
                       </span>
                     </td>
-                    <td>{formatarData(u.data_criacao)}</td>
-                    <td className="actions">
-                      <button className="btn-edit" onClick={() => abrirEdit(u)}>Editar</button>
-                      <button className="btn-delete" onClick={() => handleDelete(u.id)}>Apagar</button>
+                    <td>
+                      <span className={`badge ${u.ativo !== false ? "green" : "red"}`}>
+                        {u.ativo !== false ? "Ativo" : "Inativo"}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn btn-sm btn-blue" onClick={() => abrirEdit(u)}>
+                          <i className="fa-solid fa-edit" style={{ marginRight: 6 }}></i>
+                        </button>
+                        <button className="btn btn-sm btn-red" onClick={() => handleDelete(u.id)}>
+                          <i className="fa-solid fa-trash" style={{ marginRight: 6 }}></i>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: "center", color: "#64748b" }}>
+                  <td colSpan="6" style={{ textAlign: "center", color: "var(--text2)" }}>
                     Nenhum utilizador encontrado
                   </td>
                 </tr>
@@ -191,65 +202,77 @@ const Utilizadores = () => {
             </tbody>
           </table>
         </div>
-
-        {/* MODAL */}
-        {modalOpen && (
-          <div className="modal-overlay" onClick={() => setModalOpen(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
-              <h3>{modo === "add" ? "Novo Utilizador" : "Editar Utilizador"}</h3>
-
-              <label>Nome *</label>
-              <input
-                type="text"
-                name="nome"
-                value={form.nome}
-                onChange={handleChange}
-                placeholder="Nome completo"
-                className="modal-input"
-              />
-
-              <label>Email *</label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="email@exemplo.com"
-                className="modal-input"
-              />
-
-              <label>Telefone</label>
-              <input
-                type="tel"
-                name="telefone"
-                value={form.telefone}
-                onChange={handleChange}
-                placeholder="+258 82..."
-                className="modal-input"
-              />
-
-              <label>Função *</label>
-              <select
-                name="funcao"
-                value={form.funcao}
-                onChange={handleChange}
-                className="modal-input"
-              >
-                <option value="">Selecione uma função</option>
-                <option value="administrador">Administrador</option>
-                <option value="gerente">Gerente</option>
-                <option value="operador">Operador</option>
-              </select>
-
-              <div className="modal-actions">
-                <button className="btn-cancel" onClick={() => setModalOpen(false)}>Cancelar</button>
-                <button className="btn-save" onClick={handleSalvar}>Salvar</button>
+      </div>
+      {modalOpen && (
+        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">{modo === "add" ? "Novo Utilizador" : "Editar Utilizador"}</div>
+              <button className="modal-close" onClick={() => setModalOpen(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="field">
+                <label>Nome *</label>
+                <input
+                  type="text"
+                  name="nome"
+                  value={form.nome}
+                  onChange={handleChange}
+                  placeholder="Nome completo"
+                />
               </div>
+              <div className="field">
+                <label>Email *</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              <div className="field">
+                <label>Telefone</label>
+                <input
+                  type="tel"
+                  name="telefone"
+                  value={form.telefone}
+                  onChange={handleChange}
+                  placeholder="+258 82..."
+                />
+              </div>
+              <div className="field">
+                <label>Função *</label>
+                <select
+                  name="perfil"
+                  value={form.perfil}
+                  onChange={handleChange}
+                >
+                  <option value="admin">Administrador</option>
+                  <option value="funcionario">Funcionário</option>
+                </select>
+              </div>
+              {modo === "add" && (
+                <div className="field">
+                  <label>Senha *</label>
+                  <input
+                    type="password"
+                    name="senha"
+                    value={form.senha}
+                    onChange={handleChange}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn" onClick={() => setModalOpen(false)}>Cancelar</button>
+              <button className="btn btn-green" onClick={handleSalvar}>Salvar</button>
             </div>
           </div>
-        )}
-      </div>
-    </Layout>
+        </div>
+      )}
+    </div>
   );
 };
 

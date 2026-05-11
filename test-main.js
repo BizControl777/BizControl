@@ -51,7 +51,7 @@ ipcMain.handle("add-produto", (_, produto) => {
 function createWindow() {
   console.log("\n📦 Criando janela Electron...");
   
-  const preloadPath = path.join(__dirname, "electron", "preload.js");
+  const preloadPath = path.join(__dirname, "electron", "preload.cjs");
   console.log("🔗 Preload path:", preloadPath);
   
   const testHtmlPath = path.join(__dirname, "simple.html");
