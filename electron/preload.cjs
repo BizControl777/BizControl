@@ -51,3 +51,61 @@ try {
 }
 
 ipcRenderer.send("preload-loaded");
+const { contextBridge, ipcRenderer } = require("electron");
+
+// Lista de canais IPC que o renderer pode usar para enviar mensagens para o main process
+const validSendChannels = [];
+
+// Lista de canais IPC que o renderer pode usar para chamar handlers (request/response) no main process
+const validInvokeChannels = [
+  "ping",
+  "auth-login", // Adicionar canal para login
+  "get-produtos",
+  "add-produto",
+  "update-produto", // Adicionar canais para CRUD completo
+  "delete-produto",
+  "get-utilizadores",
+  "add-utilizador",
+  "update-utilizador",
+  "delete-utilizador",
+  "get-movimentos",
+  "add-movimento",
+  "get-clientes",
+  "get-fornecedores",
+  "get-relatorio-analise",
+  // Adicionar aqui todos os outros canais IPC necessários para CRUDs de Clientes, Fornecedores, Dívidas, etc.
+];
+
+contextBridge.exposeInMainWorld("api", {
+  // Exemplo de uma função bidirecional (invoke)
+  invoke: (channel, ...args) => {
+    if (validInvokeChannels.includes(channel)) {
+      return ipcRenderer.invoke(channel, ...args);
+    } else {
+      console.error(`Canal inválido para invoke: ${channel}`);
+      return Promise.reject(new Error(`Canal IPC inválido: ${channel}`));
+    }
+  },
+  // Exemplo de uma função unidirecional (send) - menos comum para APIs de frontend
+  send: (channel, ...args) => {
+    if (validSendChannels.includes(channel)) {
+      ipcRenderer.send(channel, ...args);
+    } else {
+      console.error(`Canal inválido para send: ${channel}`);
+    }
+  },
+  // Exemplo de uma função para receber eventos (on)
+  on: (channel, func) => {
+    const validOnChannels = []; // Canais que o renderer pode ouvir
+    if (validOnChannels.includes(channel)) {
+      // Remover listener ao ser chamado para evitar múltiplas chamadas
+      const subscription = (event, ...args) => func(...args);
+      ipcRenderer.on(channel, subscription);
+      return () => ipcRenderer.removeListener(channel, subscription);
+    } else {
+      console.error(`Canal inválido para 'on': ${channel}`);
+    }
+  },
+});
+
+console.log("✅ [Preload] API exposta com contextBridge.");
