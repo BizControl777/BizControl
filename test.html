@@ -52,7 +52,7 @@
     async function testPing() {
       try {
         log('📡 Testando ping...');
-        const result = await window.api.ping();
+        const result = await window.api.invoke('ping');
         log('✅ Ping respondeu: ' + result);
       } catch (err) {
         log('❌ Erro no ping: ' + err.message);
@@ -62,7 +62,7 @@
     async function testGetProdutos() {
       try {
         log('📡 Testando getProdutos...');
-        const result = await window.api.getProdutos();
+        const result = await window.api.invoke('get-produtos');
         log('✅ Produtos: ' + JSON.stringify(result));
       } catch (err) {
         log('❌ Erro: ' + err.message);
