@@ -955,6 +955,28 @@ ipcMain.handle("get-perfil-permissoes", (_, perfilId) =>
     .map((item) => item.nome)
 );
 
+ipcMain.handle("get-usuario-permissoes", (_, usuarioId) => {
+  try {
+    const userContext = getUsuarioContext(usuarioId);
+    if (!userContext) throw new Error("Usuário não encontrado ou inativo.");
+    return getPermissoesPorPerfil(userContext.perfil_id);
+  } catch (err) {
+    console.error("❌ [MAIN] Erro ao buscar permissões do usuário:", err);
+    throw err;
+  }
+});
+
+ipcMain.handle("set-usuario-permissoes", (_, payload) => {
+  // ATENÇÃO: A arquitetura atual de permissões é baseada em perfis (perfil_permissoes).
+  // Para definir permissões específicas por usuário diretamente, seria necessário:
+  // 1. Uma nova tabela `usuario_permissoes` no esquema da base de dados.
+  // 2. Lógica para resolver permissões combinando perfil e usuário.
+  // Por enquanto, esta funcionalidade não é suportada diretamente pelo backend.
+  throw new Error(
+    "Definição de permissões diretas por utilizador não suportada na arquitetura atual. As permissões são geridas por perfis."
+  );
+});
+
 const getIntervaloPorPeriodo = (periodo) => {
   const now = new Date();
   const pad = (value) => String(value).padStart(2, "0");
