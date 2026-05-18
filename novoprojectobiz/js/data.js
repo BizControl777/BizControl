@@ -6,6 +6,7 @@ export const CATEGORIAS = [
   "Higiene",
   "Electrónica",
   "Vestuário",
+  "Ferramentas",
   "Outros"
 ];
 

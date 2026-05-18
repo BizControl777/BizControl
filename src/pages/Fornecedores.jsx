@@ -44,28 +44,13 @@ const Fornecedores = () => {
               />
             </div>
           </div>
-          <div className="form-row cols2">
+          <div className="form-row">
             <div className="field">
               <label>Contacto</label>
               <input
                 placeholder="ex: +258 84 987 6543"
                 value={form.contacto}
                 onChange={(e) => setForm((p) => ({ ...p, contacto: e.target.value }))}
-              />
-            </div>
-            <div className="field">
-              <label>Email</label>
-              <input
-                type="email"
-                placeholder="ex: contacto@abc.com"
-              />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="field">
-              <label>Endereço</label>
-              <input
-                placeholder="ex: Av. Marginal, Maputo"
               />
             </div>
           </div>

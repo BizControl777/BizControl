@@ -60,15 +60,6 @@ const Clientes = () => {
               />
             </div>
             <div className="field">
-              <label>Email</label>
-              <input
-                type="email"
-                placeholder="ex: joao@email.com"
-              />
-            </div>
-          </div>
-          <div className="form-row">
-            <div className="field">
               <label>Endereço</label>
               <input
                 placeholder="ex: Rua 1234, Maputo"
@@ -77,6 +68,7 @@ const Clientes = () => {
               />
             </div>
           </div>
+
           <button className="btn btn-green" onClick={salvar} disabled={loading}>
             <i className="fa-solid fa-plus" style={{ marginRight: 8 }}></i> {loading ? "A guardar..." : "Adicionar Cliente"}
           </button>

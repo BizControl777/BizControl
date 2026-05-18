@@ -3,6 +3,7 @@ import { showModal, closeModal } from "./paginas/helpers.js";
 import * as vendedorPages from "./paginas/vendedor.js";
 import * as gestorPages from "./paginas/gestor.js";
 import * as superPages from "./paginas/super.js";
+import { initElectronApiBridge, loginWithElectronApi } from "./electron-bridge.js";
 
 // Estado global
 export const STATE = {
@@ -42,6 +43,7 @@ const MENUS = {
     { id: "definicoes", icon: "<i class='fa-solid fa-gear'></i>", label: "Definições" }
   ],
   super: [
+    { id: "dashboard", icon: "<i class='fa-solid fa-house'></i>", label: "Dashboard" },
     { id: "empresas", icon: "<i class='fa-solid fa-building'></i>", label: "Empresas" },
     { id: "subscricoes", icon: "<i class='fa-solid fa-credit-card'></i>", label: "Subscrições" },
     { id: "super-stats", icon: "<i class='fa-solid fa-chart-simple'></i>", label: "Estatísticas Globais" }
@@ -78,54 +80,125 @@ export function setDataCallbacks(produtos, setProdutos, vendas, setVendas) {
 
 const mapUserRole = (user) => {
   if (!user) return "vendedor";
+  const r = String(user.role || "").toLowerCase();
+  if (r === "super") return "super";
+  if (r === "gestor") return "gestor";
   if (user.perfil === "admin") return "super";
   if (Array.isArray(user.permissoes) && user.permissoes.includes("criar_produto")) return "gestor";
   return "vendedor";
 };
 
 export async function doLogin() {
+  console.log("doLogin() chamado");
   const email = document.getElementById("login-user").value.trim();
-  const password = document.getElementById("login-pass").value.trim();
+  const password = document.getElementById("login-pass").value;
+  console.log("Email:", email, "Senha:", password ? "***" : "(vazia)");
+
   if (!email || !password) {
     alert("Informe email e senha para entrar.");
     return;
   }
 
-  if (!window.api?.authLogin) {
-    alert("API Electron não disponível. Execute o app via Electron.");
+  initElectronApiBridge();
+
+  const runLogin = () =>
+    window.api?.authLogin
+      ? window.api.authLogin({ email, password })
+      : loginWithElectronApi(email, password);
+
+  console.log("Verificando APIs:", {
+    hasElectronAPI: !!window.electronAPI,
+    hasElectronPost: !!window.electronAPI?.post,
+    hasApi: !!window.api,
+    hasApiAuthLogin: !!window.api?.authLogin
+  });
+
+  if (!window.electronAPI?.post && !window.api?.authLogin) {
+    console.error("API Electron não disponível");
+    alert("API Electron não disponível. Inicie a app com: npm start (não abra o HTML no browser).");
     return;
   }
 
-  try {
-    const user = await window.api.authLogin({ email, password });
-    STATE.user = user;
-    STATE.role = mapUserRole(user);
-    document.getElementById("topbar-username").textContent = user.nome;
-    document.getElementById("topbar-userrole").textContent = STATE.role === "super" ? "Super Utilizador" : STATE.role === "gestor" ? "Gestor" : "Vendedor";
-    document.getElementById("topbar-avatar").textContent = user.nome.split(" ").map((x) => x[0]).slice(0, 2).join("");
-    document.getElementById("topbar-company").textContent = user.email;
-    document.getElementById("login-screen").classList.add("hidden");
-    document.getElementById("app-shell").classList.remove("hidden");
+  console.log("Iniciando login...", { hasElectronAPI: !!window.electronAPI?.post, hasApiAuthLogin: !!window.api?.authLogin });
 
+  const btn = document.querySelector("#login-screen .btn-primary");
+  if (btn) {
+    btn.disabled = true;
+    btn.dataset.prevText = btn.textContent;
+    btn.textContent = "A entrar…";
+  }
+
+  let user;
+  try {
+    user = await runLogin();
+  } catch (error) {
+    console.error("Falha ao autenticar:", error);
+    alert(error?.message || "Não foi possível autenticar.");
+    return;
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = btn.dataset.prevText || "Entrar no Sistema";
+    }
+  }
+
+  const nome = String(user?.nome || "Utilizador").trim() || "Utilizador";
+  const initials =
+    nome
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((x) => x[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "?";
+
+  STATE.user = user;
+  STATE.role = mapUserRole(user);
+
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app-shell").classList.remove("hidden");
+
+  document.getElementById("topbar-username").textContent = nome;
+  document.getElementById("topbar-userrole").textContent =
+    STATE.role === "super" ? "Super Utilizador" : STATE.role === "gestor" ? "Gestor" : "Vendedor";
+  document.getElementById("topbar-avatar").textContent = initials;
+  document.getElementById("topbar-company").textContent = user.email || email;
+
+  try {
     if (initVendedorPagesCallback) {
       await initVendedorPagesCallback(user);
     }
     buildSidebar();
-  } catch (error) {
-    console.error("Falha ao autenticar:", error);
-    alert(error?.message || "Não foi possível autenticar.");
+  } catch (syncErr) {
+    console.error("Erro após login (dados/menu):", syncErr);
+    try {
+      buildSidebar();
+    } catch (e2) {
+      console.error(e2);
+    }
+    alert(
+      "Entrou no sistema, mas houve um erro ao preparar o ecrã: " + (syncErr?.message || String(syncErr))
+    );
   }
 }
 
 export function logout() {
   document.getElementById("login-screen").classList.remove("hidden");
   document.getElementById("app-shell").classList.add("hidden");
+  STATE.user = null;
+  STATE.role = "vendedor";
+  try {
+    localStorage.removeItem("auth_token");
+  } catch (_) {
+    /* ignore */
+  }
   STATE.cart = [];
   STATE.charts = destroyCharts(STATE.charts);
 }
 
 export function buildSidebar() {
   const sb = document.getElementById("sidebar");
+  if (!sb) return;
   const items = MENUS[STATE.role] || MENUS.vendedor;
   sb.innerHTML = '<div class="nav-section">Menu</div>';
   items.forEach((m) => {
@@ -146,6 +219,7 @@ export function navigateTo(page) {
   if (ni) ni.classList.add("active");
   STATE.charts = destroyCharts(STATE.charts);
   const ca = document.getElementById("content-area");
+  if (!ca) return;
   ca.innerHTML = "";
   if (PAGES[page]) {
     PAGES[page](ca);
@@ -158,3 +232,12 @@ window.doLogin = doLogin;
 window.logout = logout;
 window.closeModal = closeModal;
 window.showModalWrapper = showModal;
+
+/** Delegado pelo carrinho (helpers) — implementação em vendedor.js */
+window.changeQtyWrapper = function (id, delta) {
+  if (typeof window.changeQtyWrapperImpl === "function") {
+    window.changeQtyWrapperImpl(id, delta);
+  }
+};
+
+initElectronApiBridge();

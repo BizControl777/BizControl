@@ -20,32 +20,21 @@ const Layout = ({ children }) => {
 
   const getMenuItems = () => {
     if (!user) return [];
-    const role = user.perfil || user.role;
-    if (role === 'admin' || role === 'super') {
-      return [
-        { to: "/", icon: "fa-house", label: "Dashboard" },
-        { to: "/produtos", icon: "fa-box", label: "Produtos" },
-        { to: "/inventario", icon: "fa-warehouse", label: "Inventário" },
-        { to: "/vendas", icon: "fa-cash-register", label: "Vendas" },
-        { to: "/clientes", icon: "fa-users", label: "Clientes" },
-        { to: "/fornecedores", icon: "fa-truck-field", label: "Fornecedores" },
-        { to: "/dividas", icon: "fa-file-invoice-dollar", label: "Dívidas" },
-        { to: "/relatorio", icon: "fa-chart-line", label: "Relatórios" },
-        { to: "/utilizadores", icon: "fa-user-group", label: "Utilizadores" },
-        { to: "/admin", icon: "fa-shield-halved", label: "Admin" },
-      ];
-    } else {
-      return [
-        { to: "/", icon: "fa-house", label: "Dashboard" },
-        { to: "/produtos", icon: "fa-box", label: "Produtos" },
-        { to: "/inventario", icon: "fa-warehouse", label: "Inventário" },
-        { to: "/vendas", icon: "fa-cash-register", label: "Vendas" },
-        { to: "/clientes", icon: "fa-users", label: "Clientes" },
-        { to: "/fornecedores", icon: "fa-truck-field", label: "Fornecedores" },
-        { to: "/dividas", icon: "fa-file-invoice-dollar", label: "Dívidas" },
-        { to: "/relatorio", icon: "fa-chart-line", label: "Relatórios" },
-      ];
-    }
+
+    const menu = [
+      { to: "/", icon: "fa-house", label: "Dashboard", required: null },
+      { to: "/produtos", icon: "fa-box", label: "Produtos", required: "criar_produto" },
+      { to: "/inventario", icon: "fa-warehouse", label: "Inventário", required: "criar_produto" },
+      { to: "/vendas", icon: "fa-cash-register", label: "Vendas", required: "criar_venda" },
+      { to: "/clientes", icon: "fa-users", label: "Clientes", required: "criar_venda" },
+      { to: "/fornecedores", icon: "fa-truck-field", label: "Fornecedores", required: "criar_venda" },
+      { to: "/dividas", icon: "fa-file-invoice-dollar", label: "Dívidas", required: "registrar_pagamento" },
+      { to: "/relatorio", icon: "fa-chart-line", label: "Relatórios", required: "ver_relatorios" },
+      { to: "/utilizadores", icon: "fa-user-group", label: "Utilizadores", required: "gerir_usuarios" },
+      { to: "/admin", icon: "fa-shield-halved", label: "Admin", required: "ver_logs" },
+    ];
+
+    return menu.filter((item) => item.required === null || hasPermission(item.required));
   };
 
   return (

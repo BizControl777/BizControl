@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import Chart from "chart.js/auto";
-// cleitonernestocumbane0101@gmail.com
+// Na 
 const Dashboard = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);

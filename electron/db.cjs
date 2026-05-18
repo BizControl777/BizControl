@@ -76,12 +76,23 @@ const createTables = (database) => {
       FOREIGN KEY (permissao_id) REFERENCES permissoes(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS usuario_permissoes (
+      usuario_id INTEGER NOT NULL,
+      permissao_id INTEGER NOT NULL,
+      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (usuario_id, permissao_id),
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+      FOREIGN KEY (permissao_id) REFERENCES permissoes(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS usuarios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nome TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
-      senha TEXT NOT NULL,
+      senha_hash TEXT NOT NULL,
       perfil_id INTEGER NOT NULL,
+      telefone TEXT,
+      funcao TEXT,
       ativo INTEGER DEFAULT 1,
       criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ultimo_login TIMESTAMP,
@@ -163,6 +174,8 @@ const createTables = (database) => {
   // SQLite não permite CURRENT_TIMESTAMP em ALTER TABLE ADD COLUMN.
   // Para migração segura, adicionamos sem default e normalizamos via UPDATE abaixo.
   ensureColumn("movimentos", "criado_em", "TIMESTAMP");
+  ensureColumn("usuarios", "telefone", "TEXT");
+  ensureColumn("usuarios", "funcao", "TEXT");
 
   database.exec(`
     UPDATE produtos
@@ -183,6 +196,19 @@ const createTables = (database) => {
         preco_venda_unitario = COALESCE(preco_venda_unitario, preco_venda, preco, 0),
         unidade_base = COALESCE(NULLIF(unidade_base, ''), 'unidade'),
         stock = COALESCE(stock, quantidade_total, 0);
+  `);
+
+  database.exec(`
+    UPDATE usuarios
+    SET telefone = COALESCE(
+      (SELECT telefone FROM utilizadores v WHERE v.email = usuarios.email LIMIT 1),
+      telefone
+    ),
+    funcao = COALESCE(
+      (SELECT funcao FROM utilizadores v WHERE v.email = usuarios.email LIMIT 1),
+      funcao
+    )
+    WHERE EXISTS (SELECT 1 FROM utilizadores v WHERE v.email = usuarios.email);
   `);
 
   database.exec(`
@@ -245,7 +271,7 @@ const createTables = (database) => {
     const adminId = database.prepare("SELECT id FROM perfis WHERE nome = 'admin'").get()?.id;
     const funcionarioId = database.prepare("SELECT id FROM perfis WHERE nome = 'funcionario'").get()?.id;
     const insertUsuario = database.prepare(`
-      INSERT INTO usuarios (nome, email, senha, perfil_id, ativo, criado_em, ultimo_login)
+      INSERT INTO usuarios (nome, email, senha_hash, perfil_id, ativo, criado_em, ultimo_login)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
@@ -261,6 +287,28 @@ const createTables = (database) => {
         item.ultimo_login || null
       );
     });
+
+    // Se ainda não há usuários, criar um admin padrão
+    const finalUsersCount = database.prepare("SELECT COUNT(*) AS total FROM usuarios").get()?.total || 0;
+    if (finalUsersCount === 0) {
+      const crypto = require("crypto");
+      const hashPassword = (password) => {
+        const salt = crypto.randomBytes(16).toString("hex");
+        const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+        return `${salt}:${hash}`;
+      };
+      const defaultPasswordHash = hashPassword("admin123");
+      insertUsuario.run(
+        "Administrador",
+        "admin@bizcontrol.com",
+        defaultPasswordHash,
+        adminId,
+        1,
+        new Date().toISOString(),
+        null
+      );
+      dbDevLog("Usuário padrão criado: admin@bizcontrol.com / admin123");
+    }
   }
 
   dbDevLog("Tabelas prontas");

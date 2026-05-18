@@ -1,7 +1,8 @@
 import { PRODUTOS, VENDAS } from "./data.js";
-import { STATE, setDataCallbacks, navigateTo, PAGES, setInitVendedorCallback, initGestorPages } from "./app.js";
-import { initCartHelpers, renderCart } from "./paginas/helpers.js";
-import { initVendedorPages } from "./paginas/vendedor.js";
+import { STATE, setDataCallbacks, navigateTo, PAGES, setInitVendedorCallback, doLogin, logout } from "./app.js";
+import { initCartHelpers, renderCart, setCartState } from "./paginas/helpers.js";
+import { initVendedorPages, syncVendedorProdutos } from "./paginas/vendedor.js";
+import { initGestorPages } from "./paginas/gestor.js";
 import { initSuperPages } from "./paginas/super.js";
 import { debounce } from "./utils.js";
 
@@ -11,9 +12,10 @@ let currentVendas = [...VENDAS];
 
 // Wrappers para atualizar estado
 function setProdutos(newProdutos) {
-  currentProdutos = newProdutos;
+  currentProdutos = Array.isArray(newProdutos) ? newProdutos : [];
   PRODUTOS.length = 0;
-  PRODUTOS.push(...newProdutos);
+  PRODUTOS.push(...currentProdutos);
+  syncVendedorProdutos(currentProdutos);
   const ca = document.getElementById("content-area");
   if (ca && STATE.currentPage && PAGES[STATE.currentPage]) {
     ca.innerHTML = "";
@@ -22,13 +24,14 @@ function setProdutos(newProdutos) {
 }
 
 function setVendas(newVendas) {
-  currentVendas = newVendas;
+  currentVendas = Array.isArray(newVendas) ? newVendas : [];
   VENDAS.length = 0;
-  VENDAS.push(...newVendas);
+  VENDAS.push(...currentVendas);
 }
 
 function setCart(newCart) {
-  STATE.cart = newCart;
+  STATE.cart = Array.isArray(newCart) ? newCart : [];
+  setCartState(STATE.cart);
   renderCart();
 }
 
@@ -55,6 +58,26 @@ const formatSaleFromMovement = (movement) => {
   };
 };
 
+const formatSaleFromVenda = (venda) => {
+  const data = venda.criado_em ? String(venda.criado_em).split("T")[0].split(" ")[0] : venda.data || "";
+  return {
+    id: venda.id,
+    data,
+    criado_em: venda.criado_em,
+    usuario_id: venda.usuario_id,
+    vendedor: venda.vendedor || venda.usuario_nome || "—",
+    produtos: [],
+    total: Number(venda.total || 0),
+    lucro: Number(venda.lucro || 0),
+    metodo_pagamento: venda.metodo_pagamento || "dinheiro",
+    status_pagamento: venda.status_pagamento || "pago",
+    cliente_nome: venda.cliente_nome || "Cliente balcão",
+    cliente_contacto: venda.cliente_contacto || "",
+    valor_recebido: Number(venda.valor_recebido || 0),
+    troco: Number(venda.troco || 0),
+  };
+};
+
 const syncBackendData = async () => {
   if (!window.api) return;
 
@@ -66,8 +89,10 @@ const syncBackendData = async () => {
   }
 
   try {
-    const movimentos = await window.api.getMovimentos();
-    const vendas = movimentos.filter((m) => m.tipo === "venda").map(formatSaleFromMovement);
+    const vendasRows = window.api.getVendas ? await window.api.getVendas() : null;
+    const vendas = Array.isArray(vendasRows)
+      ? vendasRows.map(formatSaleFromVenda)
+      : (await window.api.getMovimentos()).filter((m) => m.tipo === "venda").map(formatSaleFromMovement);
     setVendas(vendas);
   } catch (error) {
     console.error("Erro ao carregar vendas do backend:", error);
@@ -171,5 +196,42 @@ window.saveImageToDiskWrapper = async function() {
 document.addEventListener("click", (e) => {
   if (e.target.id === "modal-overlay") window.closeModal();
 });
+
+function wireLoginUi() {
+  const submit = document.getElementById("login-submit-btn");
+  console.log("wireLoginUi: botão submit encontrado?", !!submit);
+  if (submit) {
+    submit.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      console.log("Botão de login clicado");
+      void doLogin();
+    });
+  }
+  const pass = document.getElementById("login-pass");
+  const user = document.getElementById("login-user");
+  const onEnter = (ev) => {
+    if (ev.key === "Enter") {
+      ev.preventDefault();
+      console.log("Enter pressionado no campo de login");
+      void doLogin();
+    }
+  };
+  if (pass) pass.addEventListener("keydown", onEnter);
+  if (user) user.addEventListener("keydown", onEnter);
+
+  const out = document.getElementById("logout-btn");
+  if (out) {
+    out.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      logout();
+    });
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", wireLoginUi);
+} else {
+  wireLoginUi();
+}
 
 console.log("BizController 360 inicializado!");

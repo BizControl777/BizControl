@@ -27,7 +27,7 @@
           <label>Senha</label>
           <input type="password" id="login-pass" placeholder="••••••" value="" />
         </div>
-        <button class="btn-primary" onclick="window.doLogin()">Entrar no Sistema</button>
+        <button type="button" class="btn-primary" id="login-submit-btn">Entrar no Sistema</button>
         <div class="demo-hint">Abra via Electron para autenticar com base de dados.</div>
       </div>
     </div>
@@ -48,7 +48,7 @@
             <div class="user-role" id="topbar-userrole">—</div>
           </div>
           <div class="user-avatar" id="topbar-avatar">?</div>
-          <button class="btn-logout" onclick="window.logout()">Sair</button>
+          <button type="button" class="btn-logout" id="logout-btn">Sair</button>
         </div>
       </div>
       <div class="main-layout">

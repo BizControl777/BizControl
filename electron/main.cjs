@@ -155,6 +155,19 @@ const getPermissoesPorPerfil = (perfilId) =>
     .all(perfilId)
     .map((item) => item.nome);
 
+const getPermissoesDiretasDoUsuario = (usuarioId) =>
+  db
+    .prepare(
+      `
+      SELECT p.nome
+      FROM usuario_permissoes up
+      JOIN permissoes p ON p.id = up.permissao_id
+      WHERE up.usuario_id = ?
+    `
+    )
+    .all(usuarioId)
+    .map((item) => item.nome);
+
 const getUsuarioContext = (userId) => {
   if (!userId) return null;
   return db
@@ -170,12 +183,30 @@ const getUsuarioContext = (userId) => {
     .get(userId);
 };
 
+const getUsuarioPermissoes = (usuarioId) => {
+  const user = getUsuarioContext(usuarioId);
+  if (!user || user.ativo !== 1) return [];
+
+  if (user.perfil === "admin") {
+    return db.prepare("SELECT nome FROM permissoes ORDER BY nome ASC").all().map((item) => item.nome);
+  }
+
+  const perfilPermissoes = getPermissoesPorPerfil(user.perfil_id);
+  const usuarioPermissoes = getPermissoesDiretasDoUsuario(usuarioId);
+  return Array.from(new Set([...perfilPermissoes, ...usuarioPermissoes]));
+};
+
 const requirePermissao = (userId, permissao) => {
   const user = getUsuarioContext(userId);
   if (!user || user.ativo !== 1) {
     throw new Error("Utilizador sem sessão válida.");
   }
-  const permissoes = getPermissoesPorPerfil(user.perfil_id);
+
+  if (user.perfil === "admin") {
+    return user;
+  }
+
+  const permissoes = getUsuarioPermissoes(user.id);
   if (!permissoes.includes(permissao)) {
     throw new Error("Ação não autorizada para o seu perfil.");
   }
@@ -616,7 +647,9 @@ ipcMain.handle("get-utilizadores", () => {
     return db
       .prepare(
         `
-        SELECT u.id, u.nome, u.email, u.criado_em, u.ativo, pf.nome AS perfil
+        SELECT u.id, u.nome, u.email, u.criado_em, u.ativo, pf.nome AS perfil,
+               COALESCE(u.telefone, '') AS telefone,
+               COALESCE(u.funcao, '') AS funcao
         FROM usuarios u
         JOIN perfis pf ON pf.id = u.perfil_id
         ORDER BY u.criado_em DESC
@@ -638,11 +671,10 @@ ipcMain.handle("add-utilizador", (_, utilizador) => {
     }
     const passwordHash = hashPassword(senhaNova);
     const result = db
-      .prepare("INSERT INTO utilizadores (nome, email, telefone, funcao) VALUES (?, ?, ?, ?)")
-      .run(utilizador.nome, utilizador.email, utilizador.telefone, utilizador.funcao);
-    db.prepare(
-      "INSERT INTO usuarios (nome, email, senha, perfil_id, ativo, criado_em) VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)"
-    ).run(utilizador.nome, utilizador.email, passwordHash, perfil.id);
+      .prepare(
+        "INSERT INTO usuarios (nome, email, senha, perfil_id, ativo, telefone, funcao, criado_em) VALUES (?, ?, ?, ?, 1, ?, ?, CURRENT_TIMESTAMP)"
+      )
+      .run(utilizador.nome, utilizador.email, passwordHash, perfil.id, utilizador.telefone || "", utilizador.funcao || "");
     logAuditoria({
       usuario_id: actor.id,
       acao: "criou",
@@ -662,17 +694,14 @@ ipcMain.handle("update-utilizador", (_, utilizador) => {
     const actor = requirePermissao(utilizador.usuario_id, "gerir_usuarios");
     const perfil = resolvePerfil(utilizador.perfil || "funcionario");
     const before = db.prepare("SELECT * FROM usuarios WHERE id = ?").get(utilizador.id);
-    db.prepare("UPDATE utilizadores SET nome=?, email=?, telefone=?, funcao=? WHERE id=?").run(
-      utilizador.nome,
-      utilizador.email,
-      utilizador.telefone,
-      utilizador.funcao,
-      utilizador.id
-    );
-    db.prepare("UPDATE usuarios SET nome = ?, email = ?, perfil_id = ? WHERE id = ?").run(
+    db.prepare(
+      "UPDATE usuarios SET nome = ?, email = ?, perfil_id = ?, telefone = ?, funcao = ? WHERE id = ?"
+    ).run(
       utilizador.nome,
       utilizador.email,
       perfil.id,
+      utilizador.telefone || "",
+      utilizador.funcao || "",
       utilizador.id
     );
     logAuditoria({
@@ -695,7 +724,6 @@ ipcMain.handle("delete-utilizador", (_, id) => {
     const actor = requirePermissao(id?.usuario_id, "gerir_usuarios");
     const userId = Number(id?.id || id);
     const before = db.prepare("SELECT * FROM usuarios WHERE id = ?").get(userId);
-    db.prepare("DELETE FROM utilizadores WHERE id=?").run(userId);
     db.prepare("DELETE FROM usuarios WHERE id=?").run(userId);
     logAuditoria({
       usuario_id: actor.id,
@@ -939,7 +967,14 @@ ipcMain.handle("get-logs", (_, payload) => {
   return db.prepare("SELECT * FROM logs ORDER BY criado_em DESC LIMIT 300").all();
 });
 
-ipcMain.handle("get-perfis", () => db.prepare("SELECT * FROM perfis ORDER BY nome ASC").all());
+ipcMain.handle("get-perfis", () => {
+  const perfis = db.prepare("SELECT id, nome FROM perfis ORDER BY nome ASC").all();
+  return perfis.map((perfil) => ({
+    ...perfil,
+    permissoes: getPermissoesPorPerfil(perfil.id),
+  }));
+});
+
 ipcMain.handle("get-permissoes", () => db.prepare("SELECT * FROM permissoes ORDER BY nome ASC").all());
 ipcMain.handle("get-perfil-permissoes", (_, perfilId) =>
   db
@@ -957,9 +992,7 @@ ipcMain.handle("get-perfil-permissoes", (_, perfilId) =>
 
 ipcMain.handle("get-usuario-permissoes", (_, usuarioId) => {
   try {
-    const userContext = getUsuarioContext(usuarioId);
-    if (!userContext) throw new Error("Usuário não encontrado ou inativo.");
-    return getPermissoesPorPerfil(userContext.perfil_id);
+    return getUsuarioPermissoes(usuarioId);
   } catch (err) {
     console.error("❌ [MAIN] Erro ao buscar permissões do usuário:", err);
     throw err;
@@ -967,14 +1000,36 @@ ipcMain.handle("get-usuario-permissoes", (_, usuarioId) => {
 });
 
 ipcMain.handle("set-usuario-permissoes", (_, payload) => {
-  // ATENÇÃO: A arquitetura atual de permissões é baseada em perfis (perfil_permissoes).
-  // Para definir permissões específicas por usuário diretamente, seria necessário:
-  // 1. Uma nova tabela `usuario_permissoes` no esquema da base de dados.
-  // 2. Lógica para resolver permissões combinando perfil e usuário.
-  // Por enquanto, esta funcionalidade não é suportada diretamente pelo backend.
-  throw new Error(
-    "Definição de permissões diretas por utilizador não suportada na arquitetura atual. As permissões são geridas por perfis."
-  );
+  const actor = requirePermissao(payload.usuario_id, "gerir_permissoes");
+  const targetUserId = Number(payload.usuario_id || payload.funcionario_id);
+  if (!targetUserId || targetUserId <= 0) {
+    throw new Error("Usuário alvo inválido.");
+  }
+
+  const userExists = db.prepare("SELECT id FROM usuarios WHERE id = ?").get(targetUserId);
+  if (!userExists) {
+    throw new Error("Usuário alvo não encontrado.");
+  }
+
+  const tx = db.transaction(() => {
+    db.prepare("DELETE FROM usuario_permissoes WHERE usuario_id = ?").run(targetUserId);
+    const insert = db.prepare("INSERT INTO usuario_permissoes (usuario_id, permissao_id) VALUES (?, ?)");
+    (payload.permissoes || []).forEach((nome) => {
+      const permissao = db.prepare("SELECT id FROM permissoes WHERE nome = ?").get(nome);
+      if (permissao) insert.run(targetUserId, permissao.id);
+    });
+  });
+
+  tx();
+  logAuditoria({
+    usuario_id: actor.id,
+    acao: "editou",
+    tabela: "usuario_permissoes",
+    registro_id: targetUserId,
+    descricao: `Atualizou permissões diretas do usuário #${targetUserId}`,
+    dados_depois: payload.permissoes,
+  });
+  return true;
 });
 
 const getIntervaloPorPeriodo = (periodo) => {
